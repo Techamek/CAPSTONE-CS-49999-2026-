@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Sign In</title>
+<style>
+  :root {
+    --bg: #14171c;
+    --panel: #1b1f27;
+    --border: #2a2f3a;
+    --text: #e7e9ee;
+    --muted: #8b91a0;
+    --accent: #4f7cff;
+    --accent-hover: #3d67e6;
+    --error: #ff6b6b;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--text);
+    padding: 24px;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 360px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 36px 32px;
+  }
+
+  .card h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+
+  .card p.sub {
+    margin: 0 0 28px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  label {
+    display: block;
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .field {
+    margin-bottom: 18px;
+  }
+
+  input[type="text"],
+  input[type="password"] {
+    width: 100%;
+    padding: 10px 12px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s ease;
+  }
+
+  input[type="text"]:focus,
+  input[type="password"]:focus {
+    border-color: var(--accent);
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 22px;
+    font-size: 13px;
+  }
+
+  .row label.checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--muted);
+    margin: 0;
+    cursor: pointer;
+  }
+
+  .row a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .row a:hover {
+    text-decoration: underline;
+  }
+
+  button {
+    width: 100%;
+    padding: 11px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  button:hover {
+    background: var(--accent-hover);
+  }
+
+  .error {
+    display: none;
+    background: rgba(255, 107, 107, 0.1);
+    border: 1px solid rgba(255, 107, 107, 0.3);
+    color: var(--error);
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    margin-bottom: 18px;
+  }
+
+  .error.show {
+    display: block;
+  }
+
+  .success {
+    display: none;
+    text-align: center;
+  }
+
+  .success.show {
+    display: block;
+  }
+
+  .success h1 {
+    margin-bottom: 8px;
+  }
+
+  .success p {
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .success button {
+    margin-top: 20px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  .success button:hover {
+    background: var(--border);
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+
+  <div id="login-view">
+    <h1>Admin sign in</h1>
+    <p class="sub">Enter your credentials to access the dashboard.</p>
+
+    <div class="error" id="error-msg">Incorrect username or password.</div>
+
+    <form id="login-form">
+      <div class="field">
+        <label for="username">Username</label>
+        <input type="text" id="username" name="username" autocomplete="username" required>
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" autocomplete="current-password" required>
+      </div>
+
+      <div class="row">
+        <label class="checkbox">
+          <input type="checkbox" id="remember">
+          Remember me
+        </label>
+        <a href="#">Forgot password?</a>
+      </div>
+
+      <button type="submit">Sign in</button>
+    </form>
+  </div>
+
+  <div class="success" id="success-view">
+    <h1>Welcome back</h1>
+    <p>You're signed in as admin.</p>
+    <button id="logout-btn">Sign out</button>
+  </div>
+
+</div>
+
+<script>
+  // Demo-only credentials for client-side testing.
+  // Replace this with a real authentication request to your backend.
+  const DEMO_USER = "admin";
+  const DEMO_PASS = "admin123";
+
+  const form = document.getElementById("login-form");
+  const errorMsg = document.getElementById("error-msg");
+  const loginView = document.getElementById("login-view");
+  const successView = document.getElementById("success-view");
+  const logoutBtn = document.getElementById("logout-btn");
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+    const username = document.getElementById("username").value.trim();
+    const password = document.getElementById("password").value;
+
+    if (username === DEMO_USER && password === DEMO_PASS) {
+      errorMsg.classList.remove("show");
+      loginView.style.display = "none";
+      successView.classList.add("show");
+    } else {
+      errorMsg.classList.add("show");
+    }
+  });
+
+  logoutBtn.addEventListener("click", function () {
+    successView.classList.remove("show");
+    loginView.style.display = "block";
+    form.reset();
+  });
+</script>
+
+</body>
+</html>
