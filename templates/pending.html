@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Pending Approvals{% endblock %}
+{% block content %}
+  <h1>Pending Approvals</h1>
+
+  {% if not events %}
+    <p class="subtitle">No events waiting for review.</p>
+  {% else %}
+    <div class="event-list">
+      {% for event in events %}
+        <div class="event-card">
+          <div class="event-card-header">
+            <h3>{{ event.title }}</h3>
+            <span class="badge badge-pending">Pending</span>
+          </div>
+          <p><strong>When:</strong> {{ event.event_date }}{% if event.event_time %} at {{ event.event_time }}{% endif %}</p>
+          {% if event.location %}<p><strong>Location:</strong> {{ event.location }}</p>{% endif %}
+          {% if event.description %}<p>{{ event.description }}</p>{% endif %}
+          <p class="submitter-line">Submitted by {{ event.submitter_name }} ({{ event.submitter_email }})</p>
+
+          <div class="event-actions">
+            <form method="POST" action="{{ url_for('approve_event', event_id=event.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+              <button type="submit" class="btn btn-approve">Approve</button>
+            </form>
+            <form method="POST" action="{{ url_for('reject_event', event_id=event.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+              <button type="submit" class="btn btn-reject">Reject</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}

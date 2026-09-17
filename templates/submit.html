@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Submit an Event{% endblock %}
+{% block content %}
+  <h1>Submit an Event</h1>
+  <p class="subtitle">Your event will be reviewed by an admin before it appears on the calendar.</p>
+
+  <form method="POST" class="card-form">
+    {{ form.hidden_tag() }}
+
+    <div class="field">
+      {{ form.title.label }}
+      {{ form.title(placeholder="e.g. Community Bake Sale") }}
+      {% for error in form.title.errors %}<span class="error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div class="field">
+      {{ form.description.label }}
+      {{ form.description(rows=4, placeholder="Optional details about the event") }}
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        {{ form.event_date.label }}
+        {{ form.event_date() }}
+        {% for error in form.event_date.errors %}<span class="error">{{ error }}</span>{% endfor %}
+      </div>
+      <div class="field">
+        {{ form.event_time.label }}
+        {{ form.event_time() }}
+      </div>
+    </div>
+
+    <div class="field">
+      {{ form.location.label }}
+      {{ form.location(placeholder="e.g. Main Street Park") }}
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        {{ form.submitter_name.label }}
+        {{ form.submitter_name(placeholder="Your name") }}
+        {% for error in form.submitter_name.errors %}<span class="error">{{ error }}</span>{% endfor %}
+      </div>
+      <div class="field">
+        {{ form.submitter_email.label }}
+        {{ form.submitter_email(placeholder="you@example.com") }}
+        {% for error in form.submitter_email.errors %}<span class="error">{{ error }}</span>{% endfor %}
+      </div>
+    </div>
+
+    {{ form.submit(class="btn btn-primary") }}
+  </form>
+{% endblock %}

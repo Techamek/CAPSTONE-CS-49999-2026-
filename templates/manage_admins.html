@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Manage Admins{% endblock %}
+{% block content %}
+  <h1>Manage Admins</h1>
+
+  <h2>Current Admins</h2>
+  <ul class="admin-list">
+    {% for admin in admins %}
+      <li>{{ admin.username }} &mdash; {{ admin.email }}</li>
+    {% endfor %}
+  </ul>
+
+  <h2>Add New Admin</h2>
+  <form method="POST" class="card-form narrow">
+    {{ form.hidden_tag() }}
+    <div class="field">
+      {{ form.username.label }}
+      {{ form.username() }}
+      {% for error in form.username.errors %}<span class="error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="field">
+      {{ form.email.label }}
+      {{ form.email() }}
+      {% for error in form.email.errors %}<span class="error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="field">
+      {{ form.password.label }}
+      {{ form.password() }}
+      {% for error in form.password.errors %}<span class="error">{{ error }}</span>{% endfor %}
+    </div>
+    <div class="field">
+      {{ form.confirm.label }}
+      {{ form.confirm() }}
+      {% for error in form.confirm.errors %}<span class="error">{{ error }}</span>{% endfor %}
+    </div>
+    {{ form.submit(class="btn btn-primary") }}
+  </form>
+{% endblock %}

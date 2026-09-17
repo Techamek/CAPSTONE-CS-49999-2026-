@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block head %}
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.11/index.global.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.11/index.global.min.js"></script>
+{% endblock %}
+{% block content %}
+  <h1>Calendar</h1>
+  <p class="subtitle">Approved events only. Admin access required.</p>
+  <div id="calendar"></div>
+
+  <div id="event-modal" class="modal-overlay" style="display:none;">
+    <div class="modal">
+      <button id="modal-close" class="modal-close">&times;</button>
+      <h2 id="modal-title"></h2>
+      <p id="modal-when"></p>
+      <p id="modal-location"></p>
+      <p id="modal-description"></p>
+      <hr>
+      <p class="modal-submitter">Submitted by <span id="modal-submitter"></span> (<span id="modal-email"></span>)</p>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      var calendarEl = document.getElementById('calendar');
+      var modal = document.getElementById('event-modal');
+
+      var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,timeGridWeek,listMonth'
+        },
+        events: "{{ url_for('api_events') }}",
+        eventClick: function (info) {
+          document.getElementById('modal-title').textContent = info.event.title;
+          document.getElementById('modal-when').textContent = info.event.start
+            ? info.event.start.toLocaleString()
+            : '';
+          document.getElementById('modal-location').textContent =
+            'Location: ' + (info.event.extendedProps.location || 'N/A');
+          document.getElementById('modal-description').textContent =
+            info.event.extendedProps.description || 'No description provided.';
+          document.getElementById('modal-submitter').textContent = info.event.extendedProps.submitter_name;
+          document.getElementById('modal-email').textContent = info.event.extendedProps.submitter_email;
+          modal.style.display = 'flex';
+        }
+      });
+      calendar.render();
+
+      document.getElementById('modal-close').addEventListener('click', function () {
+        modal.style.display = 'none';
+      });
+      modal.addEventListener('click', function (e) {
+        if (e.target === modal) modal.style.display = 'none';
+      });
+    });
+  </script>
+{% endblock %}
