@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Submit an Event{% endblock %}
+{% block content %}
+  <h1>Submit an Event</h1>
+  <p class="subtitle">Your event will be reviewed by an admin before it appears on the calendar. Pricing is based on Coco Café's current Special Events rate sheet and is an estimate — the venue will confirm your final invoice.</p>
+
+  <form method="POST" class="card-form" id="event-form">
+    {{ form.hidden_tag() }}
+
+    <div class="field">
+      {{ form.title.label }}
+      {{ form.title(placeholder="e.g. Community Bake Sale") }}
+      {% for error in form.title.errors %}<span class="error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        {{ form.event_type.label }}
+        {{ form.event_type() }}
+        {% for error in form.event_type.errors %}<span class="error">{{ error }}</span>{% endfor %}
+      </div>
+      <div class="field">
+        {{ form.guest_count.label }}
+        {{ form.guest_count(id="guest_count", min=1, max=max_capacity, placeholder="e.g. 20") }}
+        {% for error in form.guest_count.errors %}<span class="error">{{ error }}</span>{% endfor %}
+        <span class="submitter-line">Venue max capacity: {{ max_capacity }} guests</span>
+      </div>
+    </div>
+
+    <div class="field">
+      {{ form.description.label }}
+      {{ form.description(rows=3, placeholder="Optional details about the event") }}
+    </div>
+
+    <div class="form-section">
+      <h2>When</h2>
+      <div class="field-row">
+        <div class="field">
+          {{ form.event_date.label }}
+          {{ form.event_date() }}
+          {% for error in form.event_date.errors %}<span class="error">{{ error }}</span>{% endfor %}
+        </div>
+        <div class="field">
+          {{ form.event_time.label }}
+          {{ form.event_time() }}
+          {% for error in form.event_time.errors %}<span class="error">{{ error }}</span>{% endfor %}
+        </div>
+        <div class="field">
+          {{ form.duration_hours.label }}
+          {{ form.duration_hours(id="duration_hours") }}
+          {% for error in form.duration_hours.errors %}<span class="error">{{ error }}</span>{% endfor %}
+        </div>
+      </div>
+      <div class="field">
+        {{ form.location.label }}
+        {{ form.location(placeholder="e.g. Main Room") }}
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h2>Menu</h2>
+      <p class="form-section-hint">Menu is $17.50 per person and includes drip coffee &amp; hot tea. Choose 2 savory and 2 sweet options.</p>
+      <div class="field">
+        {{ form.savory_selections.label }}
+        <ul class="checkbox-list">
+          {% for subfield in form.savory_selections %}
+            <li>{{ subfield() }} {{ subfield.label }}</li>
+          {% endfor %}
+        </ul>
+        {% for error in form.savory_selections.errors %}<span class="error">{{ error }}</span>{% endfor %}
+      </div>
+      <div class="field">
+        {{ form.sweet_selections.label }}
+        <ul class="checkbox-list">
+          {% for subfield in form.sweet_selections %}
+            <li>{{ subfield() }} {{ subfield.label }}</li>
+          {% endfor %}
+        </ul>
+        {% for error in form.sweet_selections.errors %}<span class="error">{{ error }}</span>{% endfor %}
+      </div>
+      <div class="field">
+        {{ form.enhancements.label }}
+        <ul class="checkbox-list">
+          {% for subfield in form.enhancements %}
+            <li>{{ subfield(class="enhancement-box") }} {{ subfield.label }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h2>Table Arrangement</h2>
+      <p class="form-section-hint">Drag tables from the palette onto the floor, then drag to arrange them. Click the &times; on a table to remove it.</p>
+      <div class="table-designer">
+        <div class="table-palette">
+          {% for key, t in table_types.items() %}
+            <button type="button" class="palette-btn" data-type="{{ key }}" data-label="{{ t.label }}" data-seats="{{ t.seats }}" data-shape="{{ t.shape }}">
+              + {{ t.label }} ({{ t.seats }} seats)
+            </button>
+          {% endfor %}
+          <button type="button" id="clear-layout" class="clear-btn">Clear all</button>
+        </div>
+        <div id="floor" class="floor"></div>
+        <div class="table-designer-footer">
+          <span id="seats-placed">0 seats placed</span>
+        </div>
+      </div>
+      {{ form.table_layout(id="table_layout") }}
+      {% for error in form.table_layout.errors %}<span class="error">{{ error }}</span>{% endfor %}
+    </div>
+
+    <div class="form-section">
+      <h2>Price Estimate</h2>
+      <div id="price-estimate" class="price-card">
+        <p class="price-hint">Enter guest count and duration to see a live price estimate.</p>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h2>Your Contact Info</h2>
+      <div class="field-row">
+        <div class="field">
+          {{ form.submitter_name.label }}
+          {{ form.submitter_name(placeholder="Your name") }}
+          {% for error in form.submitter_name.errors %}<span class="error">{{ error }}</span>{% endfor %}
+        </div>
+        <div class="field">
+          {{ form.submitter_email.label }}
+          {{ form.submitter_email(placeholder="you@example.com") }}
+          {% for error in form.submitter_email.errors %}<span class="error">{{ error }}</span>{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    {{ form.submit(class="btn btn-primary") }}
+  </form>
+{% endblock %}
+{% block scripts %}
+  <script src="{{ url_for('static', filename='js/submit.js') }}"></script>
+{% endblock %}

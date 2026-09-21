@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Admin Login{% endblock %}
+{% block content %}
+  <h1>Admin Login</h1>
+  <form method="POST" class="card-form narrow">
+    {{ form.hidden_tag() }}
+    <div class="field">
+      {{ form.username.label }}
+      {{ form.username() }}
+    </div>
+    <div class="field">
+      {{ form.password.label }}
+      {{ form.password() }}
+    </div>
+    {{ form.submit(class="btn btn-primary") }}
+  </form>
+{% endblock %}

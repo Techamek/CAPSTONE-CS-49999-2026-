@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Event Calendar{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <nav class="navbar">
+    <div class="navbar-brand">📅 Event Calendar</div>
+    <div class="navbar-links">
+      <a href="{{ url_for('submit_event') }}">Submit an Event</a>
+      {% if current_user.is_authenticated %}
+        <a href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('admin_pending') }}">Pending Approvals</a>
+        <a href="{{ url_for('manage_admins') }}">Manage Admins</a>
+        <a href="{{ url_for('admin_logout') }}">Log Out ({{ current_user.username }})</a>
+      {% else %}
+        <a href="{{ url_for('admin_login') }}">Admin Login</a>
+      {% endif %}
+    </div>
+  </nav>
+
+  <div class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash flash-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </div>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

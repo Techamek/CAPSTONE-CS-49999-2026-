@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block head %}
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.11/index.global.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.11/index.global.min.js"></script>
+{% endblock %}
+{% block content %}
+  <h1>Calendar</h1>
+  <p class="subtitle">Approved events only. Admin access required.</p>
+  <div id="calendar"></div>
+
+  <div id="event-modal" class="modal-overlay" style="display:none;">
+    <div class="modal">
+      <button id="modal-close" class="modal-close">&times;</button>
+      <h2 id="modal-title"></h2>
+      <p id="modal-when"></p>
+      <p id="modal-location"></p>
+      <p id="modal-description"></p>
+
+      <dl class="detail-grid">
+        <div><dt>Type</dt><dd id="modal-type"></dd></div>
+        <div><dt>Guests</dt><dd id="modal-guests"></dd></div>
+        <div><dt>Duration</dt><dd id="modal-duration"></dd></div>
+        <div><dt>Est. Total</dt><dd id="modal-total" class="price-summary-inline"></dd></div>
+        <div><dt>Deposit</dt><dd id="modal-deposit"></dd></div>
+      </dl>
+
+      <p class="submitter-line"><strong>Menu</strong></p>
+      <ul id="modal-menu-chips" class="chip-list"></ul>
+
+      <p class="submitter-line"><strong>Table Layout</strong></p>
+      <div id="modal-floor" class="mini-floor"></div>
+
+      <hr>
+      <p class="modal-submitter">Submitted by <span id="modal-submitter"></span> (<span id="modal-email"></span>)</p>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      var calendarEl = document.getElementById('calendar');
+      var modal = document.getElementById('event-modal');
+
+      function fmtMoney(n) {
+        return (n === null || n === undefined) ? '—' : '$' + Number(n).toFixed(2);
+      }
+
+      var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        headerToolbar: {
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,timeGridWeek,listMonth'
+        },
+        events: "{{ url_for('api_events') }}",
+        eventClick: function (info) {
+          var props = info.event.extendedProps;
+
+          document.getElementById('modal-title').textContent = info.event.title;
+          document.getElementById('modal-when').textContent = info.event.start
+            ? info.event.start.toLocaleString()
+            : '';
+          document.getElementById('modal-location').textContent =
+            'Location: ' + (props.location || 'N/A');
+          document.getElementById('modal-description').textContent =
+            props.description || 'No description provided.';
+          document.getElementById('modal-submitter').textContent = props.submitter_name;
+          document.getElementById('modal-email').textContent = props.submitter_email;
+
+          document.getElementById('modal-type').textContent = props.event_type || '—';
+          document.getElementById('modal-guests').textContent = props.guest_count || '—';
+          document.getElementById('modal-duration').textContent = (props.duration_hours || '—') + ' hr';
+          document.getElementById('modal-total').textContent = fmtMoney(props.grand_total);
+          document.getElementById('modal-deposit').textContent = fmtMoney(props.deposit_amount);
+
+          var chipList = document.getElementById('modal-menu-chips');
+          chipList.innerHTML = '';
+          (props.savory || []).concat(props.sweet || [], props.enhancements || []).forEach(function (item) {
+            var li = document.createElement('li');
+            li.className = 'chip';
+            li.textContent = item;
+            chipList.appendChild(li);
+          });
+
+          var floor = document.getElementById('modal-floor');
+          floor.innerHTML = '';
+          (props.table_layout || []).forEach(function (t) {
+            var div = document.createElement('div');
+            div.className = 'mini-floor-table' + (t.shape === 'rect' ? ' rect' : '');
+            div.style.left = Math.round(t.x / 4) + 'px';
+            div.style.top = Math.round(t.y / 4) + 'px';
+            div.textContent = t.seats;
+            floor.appendChild(div);
+          });
+
+          modal.style.display = 'flex';
+        }
+      });
+      calendar.render();
+
+      document.getElementById('modal-close').addEventListener('click', function () {
+        modal.style.display = 'none';
+      });
+      modal.addEventListener('click', function (e) {
+        if (e.target === modal) modal.style.display = 'none';
+      });
+    });
+  </script>
+{% endblock %}
