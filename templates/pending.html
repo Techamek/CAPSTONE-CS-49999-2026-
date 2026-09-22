@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Pending Approvals{% endblock %}
+{% block content %}
+  <h1>Pending Approvals</h1>
+
+  {% if not events %}
+    <p class="subtitle">No events waiting for review.</p>
+  {% else %}
+    <div class="event-list">
+      {% for event in events %}
+        <div class="event-card">
+          <div class="event-card-header">
+            <h3>{{ event.title }}</h3>
+            <span class="badge badge-pending">Pending</span>
+          </div>
+
+          <dl class="detail-grid">
+            <div><dt>Type</dt><dd>{{ event.event_type or '—' }}</dd></div>
+            <div><dt>Guests</dt><dd>{{ event.guest_count or '—' }}</dd></div>
+            <div><dt>When</dt><dd>{{ event.event_date }}{% if event.event_time %} at {{ event.event_time }}{% endif %}</dd></div>
+            <div><dt>Duration</dt><dd>{{ event.duration_hours or '—' }} hr</dd></div>
+            {% if event.location %}<div><dt>Location</dt><dd>{{ event.location }}</dd></div>{% endif %}
+            <div><dt>Est. Total</dt><dd class="price-summary-inline">{% if event.grand_total %}${{ '%.2f'|format(event.grand_total) }}{% else %}—{% endif %}</dd></div>
+            <div><dt>Deposit</dt><dd>{% if event.deposit_amount %}${{ '%.2f'|format(event.deposit_amount) }}{% else %}—{% endif %}</dd></div>
+          </dl>
+
+          {% if event.description %}<p>{{ event.description }}</p>{% endif %}
+
+          {% if event.savory_list() or event.sweet_list() or event.enhancement_labels() %}
+            <p class="submitter-line"><strong>Menu</strong></p>
+            <ul class="chip-list">
+              {% for item in event.savory_list() %}<li class="chip">{{ item }}</li>{% endfor %}
+              {% for item in event.sweet_list() %}<li class="chip">{{ item }}</li>{% endfor %}
+              {% for item in event.enhancement_labels() %}<li class="chip">{{ item }}</li>{% endfor %}
+            </ul>
+          {% endif %}
+
+          {% set layout = event.table_layout_list() %}
+          {% if layout %}
+            <p class="submitter-line"><strong>Table Layout</strong> ({{ event.total_seats_placed() }} seats placed)</p>
+            <div class="mini-floor">
+              {% for t in layout %}
+                <div class="mini-floor-table {% if t.shape == 'rect' %}rect{% endif %}"
+                     style="left: {{ (t.x / 4)|round(0, 'floor') }}px; top: {{ (t.y / 4)|round(0, 'floor') }}px;">
+                  {{ t.seats }}
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+
+          <p class="submitter-line">Submitted by {{ event.submitter_name }} ({{ event.submitter_email }})</p>
+
+          <div class="event-actions">
+            <form method="POST" action="{{ url_for('approve_event', event_id=event.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+              <button type="submit" class="btn btn-approve">Approve</button>
+            </form>
+            <form method="POST" action="{{ url_for('reject_event', event_id=event.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+              <button type="submit" class="btn btn-reject">Reject</button>
+            </form>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}
