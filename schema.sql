@@ -1,5 +1,5 @@
--- Reference schema. In practice, `flask init-db` creates these tables for you
--- via SQLAlchemy — this file is here if you'd rather set up MySQL manually.
+-- Reference schema. `flask init-db` creates these tables for you via SQLAlchemy
+-- (and seeds default weekly hours) -- this file is here for manual setup.
 
 CREATE DATABASE IF NOT EXISTS calendar_app CHARACTER SET utf8mb4;
 USE calendar_app;
@@ -26,19 +26,14 @@ CREATE TABLE IF NOT EXISTS events (
     reviewed_by INT,
     reviewed_at DATETIME,
 
-    -- event planning details
     event_type VARCHAR(50),
     guest_count INT,
     duration_hours FLOAT,
-    savory_selections VARCHAR(400),
-    sweet_selections VARCHAR(400),
-    enhancements VARCHAR(400),
-    table_layout TEXT,               -- JSON array of {id,type,label,seats,shape,x,y}
+    layout_choice VARCHAR(10),          -- '35-A'..'35-D' or '50-A'..'50-B'
 
-    -- price tracking
+    -- admin-only base-package estimate
     space_rental_total DECIMAL(10,2),
     menu_total DECIMAL(10,2),
-    enhancements_total DECIMAL(10,2),
     subtotal DECIMAL(10,2),
     tax_total DECIMAL(10,2),
     gratuity_total DECIMAL(10,2),
@@ -47,3 +42,27 @@ CREATE TABLE IF NOT EXISTS events (
 
     FOREIGN KEY (reviewed_by) REFERENCES admins(id)
 );
+
+-- One row per weekday (0 = Monday ... 6 = Sunday)
+CREATE TABLE IF NOT EXISTS weekly_hours (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    weekday INT NOT NULL UNIQUE,
+    enabled BOOLEAN NOT NULL DEFAULT 0,
+    open_time TIME,
+    close_time TIME
+);
+
+-- One-off closures or custom hours for a specific date
+CREATE TABLE IF NOT EXISTS date_overrides (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    date DATE NOT NULL UNIQUE,
+    is_closed BOOLEAN NOT NULL DEFAULT 1,
+    open_time TIME,
+    close_time TIME,
+    note VARCHAR(200)
+);
+
+-- Upgrading an existing database? Run this, then `flask init-db` (creates the two new tables):
+--   ALTER TABLE events ADD COLUMN layout_choice VARCHAR(10);
+-- Old columns (savory_selections, sweet_selections, enhancements, table_layout, enhancements_total)
+-- are no longer used; they can stay or be dropped.
