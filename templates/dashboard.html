@@ -21,15 +21,12 @@
         <div><dt>Type</dt><dd id="modal-type"></dd></div>
         <div><dt>Guests</dt><dd id="modal-guests"></dd></div>
         <div><dt>Duration</dt><dd id="modal-duration"></dd></div>
-        <div><dt>Est. Total</dt><dd id="modal-total" class="price-summary-inline"></dd></div>
+        <div><dt>Est. Total (base)</dt><dd id="modal-total" class="price-summary-inline"></dd></div>
         <div><dt>Deposit</dt><dd id="modal-deposit"></dd></div>
       </dl>
 
-      <p class="submitter-line"><strong>Menu</strong></p>
-      <ul id="modal-menu-chips" class="chip-list"></ul>
-
-      <p class="submitter-line"><strong>Table Layout</strong></p>
-      <div id="modal-floor" class="mini-floor"></div>
+      <p class="submitter-line"><strong>Table Layout:</strong> <span id="modal-layout-label"></span></p>
+      <a id="modal-layout-link" href="#" target="_blank" rel="noopener"><img id="modal-layout-img" class="layout-thumb" alt="Table layout"></a>
 
       <hr>
       <p class="modal-submitter">Submitted by <span id="modal-submitter"></span> (<span id="modal-email"></span>)</p>
@@ -73,25 +70,12 @@
           document.getElementById('modal-total').textContent = fmtMoney(props.grand_total);
           document.getElementById('modal-deposit').textContent = fmtMoney(props.deposit_amount);
 
-          var chipList = document.getElementById('modal-menu-chips');
-          chipList.innerHTML = '';
-          (props.savory || []).concat(props.sweet || [], props.enhancements || []).forEach(function (item) {
-            var li = document.createElement('li');
-            li.className = 'chip';
-            li.textContent = item;
-            chipList.appendChild(li);
-          });
-
-          var floor = document.getElementById('modal-floor');
-          floor.innerHTML = '';
-          (props.table_layout || []).forEach(function (t) {
-            var div = document.createElement('div');
-            div.className = 'mini-floor-table' + (t.shape === 'rect' ? ' rect' : '');
-            div.style.left = Math.round(t.x / 4) + 'px';
-            div.style.top = Math.round(t.y / 4) + 'px';
-            div.textContent = t.seats;
-            floor.appendChild(div);
-          });
+          document.getElementById('modal-layout-label').textContent = props.layout_label || 'None selected';
+          var img = document.getElementById('modal-layout-img');
+          var link = document.getElementById('modal-layout-link');
+          img.style.display = props.layout_image ? '' : 'none';
+          img.src = props.layout_image || '';
+          link.href = props.layout_image || '#';
 
           modal.style.display = 'flex';
         }

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Availability{% endblock %}
+{% block content %}
+  <h1>Availability</h1>
+  <p class="subtitle">Control which days and times guests can choose on the submission form. Approved events automatically block their time slot.</p>
+
+  <form method="POST" action="{{ url_for('save_weekly_hours') }}" class="card-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <h2 class="section-title">Weekly hours</h2>
+    <table class="avail-table">
+      <thead><tr><th>Day</th><th>Open for events</th><th>From</th><th>Until</th></tr></thead>
+      <tbody>
+        {% for w in weekly %}
+          <tr>
+            <td>{{ day_names[w.weekday] }}</td>
+            <td><input type="checkbox" name="enabled_{{ w.weekday }}" {% if w.enabled %}checked{% endif %}></td>
+            <td><input type="time" name="open_{{ w.weekday }}" step="1800" value="{{ w.open_time.strftime('%H:%M') if w.open_time else '09:00' }}"></td>
+            <td><input type="time" name="close_{{ w.weekday }}" step="1800" value="{{ w.close_time.strftime('%H:%M') if w.close_time else '17:00' }}"></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <p class="hint">Guests can start an event at any 30-minute mark within these hours, as long as the whole event finishes by the closing time.</p>
+    <button type="submit" class="btn btn-primary">Save weekly hours</button>
+  </form>
+
+  <form method="POST" action="{{ url_for('add_date_override') }}" class="card-form" style="margin-top:1.5rem;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+    <h2 class="section-title">Specific dates</h2>
+    <p class="hint">Close a single day (holiday, private event) or set different hours for it. Overrides beat the weekly hours, including opening a normally-closed day.</p>
+    <div class="field-row">
+      <div class="field"><label>Date</label><input type="date" name="date" min="{{ today }}" required></div>
+      <div class="field">
+        <label>What happens</label>
+        <select name="mode" id="override-mode">
+          <option value="closed">Closed all day</option>
+          <option value="custom">Custom hours</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row" id="override-hours" style="display:none;">
+      <div class="field"><label>From</label><input type="time" name="open_time" step="1800" value="09:00"></div>
+      <div class="field"><label>Until</label><input type="time" name="close_time" step="1800" value="17:00"></div>
+    </div>
+    <div class="field"><label>Note (optional, admin only)</label><input type="text" name="note" maxlength="200" placeholder="e.g. Holiday"></div>
+    <button type="submit" class="btn btn-primary">Add / update date</button>
+  </form>
+
+  <h3 style="margin-top:1.5rem;">Upcoming overrides</h3>
+  {% if not overrides %}
+    <p class="subtitle">None yet.</p>
+  {% else %}
+    <table class="avail-table override-table">
+      <thead><tr><th>Date</th><th>Status</th><th>Note</th><th></th></tr></thead>
+      <tbody>
+        {% for o in overrides %}
+          <tr>
+            <td>{{ o.date.strftime('%a, %b %d, %Y') }}</td>
+            <td>{% if o.is_closed %}Closed{% else %}{{ o.open_time.strftime('%I:%M %p').lstrip('0') }} &ndash; {{ o.close_time.strftime('%I:%M %p').lstrip('0') }}{% endif %}</td>
+            <td>{{ o.note or '' }}</td>
+            <td>
+              <form method="POST" action="{{ url_for('delete_date_override', override_id=o.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="btn btn-reject">Remove</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+{% endblock %}
+{% block scripts %}
+  <script>
+    var mode = document.getElementById('override-mode');
+    var hours = document.getElementById('override-hours');
+    mode.addEventListener('change', function () {
+      hours.style.display = mode.value === 'custom' ? 'flex' : 'none';
+    });
+  </script>
+{% endblock %}
