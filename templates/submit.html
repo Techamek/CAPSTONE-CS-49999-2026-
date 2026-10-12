@@ -6,7 +6,6 @@
 {% endblock %}
 {% block content %}
   <h1>Submit an Event</h1>
-  <p class="subtitle">Tell us about your event. Only dates and times the venue has open can be selected. An admin will review your request before it appears on the calendar.</p>
 
   <form method="POST" class="card-form" id="event-form">
     {{ form.hidden_tag() }}
@@ -38,7 +37,7 @@
 
     <div class="form-section">
       <h2>When</h2>
-      <p class="form-section-hint">Choose a duration first &mdash; the dates and start times offered depend on how long you need the space.</p>
+      <p class="form-section-hint">Note &mdash; Duration includes all necessary prep-time for decoration</p>
       <div class="field-row">
         <div class="field">
           {{ form.duration_hours.label }}
@@ -63,25 +62,30 @@
       </div>
     </div>
 
-      <h2 style="font-size: 12pt">Menu</h2>
+    <div class="form-section">
+      <h2>Menu</h2>
+      <div class="menu-row">
         <a class="btn btn-primary" data-bs-toggle="offcanvas" href="#offcanvasExample" role="button" aria-controls="offcanvasExample">
           View Menu
         </a>
-        Our team will follow up to finalize menu selections with you.
-        <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasExample" aria-labelledby="offcanvasExampleLabel" style="width: 35%">
-          <div class="offcanvas-header">
-            <h5 class="offcanvas-title" id="offcanvasExampleLabel">Menu</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-          </div>
-          <div class="offcanvas-body">
-            <p> Scroll Down to see more </p>
-            <div>
-              <img src="static/img/menu/Savory.jpg" style="width: 100%" >
-              <img src="static/img/menu/Sweet.jpg" style="width: 100%" >
-              <img src="static/img/menu/Enhancements.jpg" style="width: 100%" >
-            </div>
+        <span>Our team will follow up to finalize menu selections with you.</span>
+      </div>
+      <div class="offcanvas offcanvas-start menu-offcanvas" tabindex="-1" id="offcanvasExample" aria-labelledby="offcanvasExampleLabel">
+        <div class="offcanvas-header">
+          <h5 class="offcanvas-title" id="offcanvasExampleLabel">Menu</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+          <p>Scroll down to see more</p>
+          <div>
+            <img src="{{ url_for('static', filename='img/menu/menu.png') }}" alt="Menu selections: choose 2 savory, choose 2 sweet, plus coffee and tea" style="width: 100%">
+            <img src="{{ url_for('static', filename='img/menu/Savory.jpg') }}" alt="Savory menu" style="width: 100%">
+            <img src="{{ url_for('static', filename='img/menu/Sweet.jpg') }}" alt="Sweet menu" style="width: 100%">
+            <img src="{{ url_for('static', filename='img/menu/Enhancements.jpg') }}" alt="Enhancements menu" style="width: 100%">
           </div>
         </div>
+      </div>
+    </div>
 
     <div class="form-section">
       <h2>Table Layout</h2>
@@ -118,6 +122,11 @@
           {{ form.submitter_email(placeholder="you@example.com") }}
           {% for error in form.submitter_email.errors %}<span class="error">{{ error }}</span>{% endfor %}
         </div>
+      </div>
+      <div class="field">
+        {{ form.submitter_phone.label }}
+        {{ form.submitter_phone(placeholder="e.g. (555) 123-4567", type="tel", autocomplete="tel") }}
+        {% for error in form.submitter_phone.errors %}<span class="error">{{ error }}</span>{% endfor %}
       </div>
     </div>
 

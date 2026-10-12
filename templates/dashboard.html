@@ -6,7 +6,6 @@
 {% endblock %}
 {% block content %}
   <h1>Calendar</h1>
-  <p class="subtitle">Approved events only. Admin access required.</p>
   <div id="calendar"></div>
 
   <div id="event-modal" class="modal-overlay" style="display:none;">
@@ -29,7 +28,7 @@
       <a id="modal-layout-link" href="#" target="_blank" rel="noopener"><img id="modal-layout-img" class="layout-thumb" alt="Table layout"></a>
 
       <hr>
-      <p class="modal-submitter">Submitted by <span id="modal-submitter"></span> (<span id="modal-email"></span>)</p>
+      <p class="modal-submitter">Submitted by <span id="modal-submitter"></span> (<span id="modal-email"></span>)<span id="modal-phone-wrap" style="display:none;"> &middot; <span id="modal-phone"></span></span></p>
     </div>
   </div>
 
@@ -63,6 +62,8 @@
             props.description || 'No description provided.';
           document.getElementById('modal-submitter').textContent = props.submitter_name;
           document.getElementById('modal-email').textContent = props.submitter_email;
+          document.getElementById('modal-phone').textContent = props.submitter_phone || '';
+          document.getElementById('modal-phone-wrap').style.display = props.submitter_phone ? '' : 'none';
 
           document.getElementById('modal-type').textContent = props.event_type || '—';
           document.getElementById('modal-guests').textContent = props.guest_count || '—';

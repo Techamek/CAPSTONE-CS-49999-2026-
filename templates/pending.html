@@ -38,7 +38,7 @@
             </a>
           {% endif %}
 
-          <p class="submitter-line">Submitted by {{ event.submitter_name }} ({{ event.submitter_email }})</p>
+          <p class="submitter-line">Submitted by {{ event.submitter_name }} ({{ event.submitter_email }}){% if event.submitter_phone %} &middot; {{ event.submitter_phone }}{% endif %}</p>
 
           <div class="event-actions">
             <form method="POST" action="{{ url_for('approve_event', event_id=event.id) }}">
