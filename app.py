@@ -9,25 +9,51 @@ from wtforms import (
     StringField, TextAreaField, DateField, PasswordField, SubmitField,
     SelectField, RadioField, IntegerField,
 )
-from wtforms.validators import DataRequired, Email, Length, EqualTo, NumberRange, ValidationError
+from wtforms.validators import DataRequired, Length, EqualTo, NumberRange, ValidationError, Optional, Regexp
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 
 load_dotenv()
 
 app = Flask(__name__)
+
+# Deployment (Railway): the site sits behind an HTTPS proxy. Trust its X-Forwarded-*
+# headers so Flask knows requests are https (needed for CSRF checks and secure cookies).
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+ON_RAILWAY = 'RAILWAY_ENVIRONMENT' in os.environ or 'RAILWAY_PROJECT_ID' in os.environ
+
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'change-me-in-.env')
+if ON_RAILWAY and app.config['SECRET_KEY'] == 'change-me-in-.env':
+    raise RuntimeError('Set a SECRET_KEY environment variable before deploying.')
+
+# Cookies: HTTP-only always; "secure" (https only) when deployed or COOKIE_SECURE=1.
+_secure_cookies = ON_RAILWAY or os.environ.get('COOKIE_SECURE') == '1'
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=_secure_cookies,
+    REMEMBER_COOKIE_SECURE=_secure_cookies,
+    REMEMBER_COOKIE_HTTPONLY=True,
+)
 
 db_user = os.environ.get('DB_USER', 'root')
 db_password = os.environ.get('DB_PASSWORD', '')
 db_host = os.environ.get('DB_HOST', 'localhost')
 db_name = os.environ.get('DB_NAME', 'calendar_app')
 
-# DATABASE_URL (optional) overrides the MySQL settings above, e.g. for local testing with SQLite.
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or (
+# DATABASE_URL (optional) overrides the MySQL settings above, e.g. for SQLite testing or a
+# hosted database. Railway's MySQL plugin provides MYSQL_URL, used if DATABASE_URL is unset.
+_db_url = os.environ.get('DATABASE_URL') or os.environ.get('MYSQL_URL')
+if _db_url and _db_url.startswith('mysql://'):
+    _db_url = 'mysql+pymysql://' + _db_url[len('mysql://'):]   # use the PyMySQL driver
+app.config['SQLALCHEMY_DATABASE_URI'] = _db_url or (
     f"mysql+pymysql://{db_user}:{db_password}@{db_host}/{db_name}"
 )
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Hosted MySQL closes idle connections; check each connection before use and recycle often.
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_pre_ping': True, 'pool_recycle': 280}
 
 db = SQLAlchemy(app)
 csrf = CSRFProtect(app)
@@ -137,6 +163,7 @@ class Event(db.Model):
     description = db.Column(db.Text, nullable=True)
     submitter_name = db.Column(db.String(120), nullable=False)
     submitter_email = db.Column(db.String(120), nullable=False)
+    submitter_phone = db.Column(db.String(30), nullable=True)
     event_date = db.Column(db.Date, nullable=False)
     event_time = db.Column(db.Time, nullable=True)
     location = db.Column(db.String(200), nullable=True)
@@ -320,7 +347,14 @@ class EventSubmissionForm(FlaskForm):
     layout_choice = RadioField('Table Layout', choices=[(k, k) for k in LAYOUTS], validate_choice=False)
 
     submitter_name = StringField('Your Name', validators=[DataRequired(), Length(max=120)])
-    submitter_email = StringField('Your Email', validators=[DataRequired(), Email(), Length(max=120)])
+    submitter_email = StringField('Your Email', validators=[DataRequired(), Length(max=120)])
+    # Optional. To make it required, replace Optional() with DataRequired().
+    submitter_phone = StringField('Your Phone Number', validators=[
+        Optional(),
+        Length(max=30),
+        Regexp(r'^[0-9+().\-\s]{7,30}$',
+               message='Please enter a valid phone number (digits, spaces, dashes, parentheses).'),
+    ])
     submit = SubmitField('Submit Event')
 
     def validate_event_date(self, field):
@@ -358,7 +392,7 @@ class LoginForm(FlaskForm):
 
 class AddAdminForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(max=80)])
-    email = StringField('Email', validators=[DataRequired(), Email(), Length(max=120)])
+    email = StringField('Email', validators=[DataRequired(), Length(max=120)])
     password = PasswordField('Password', validators=[DataRequired(), Length(min=8)])
     confirm = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
     submit = SubmitField('Create Admin')
@@ -380,6 +414,7 @@ def submit_event():
             description=form.description.data,
             submitter_name=form.submitter_name.data,
             submitter_email=form.submitter_email.data,
+            submitter_phone=(form.submitter_phone.data or '').strip() or None,
             event_date=form.event_date.data,
             event_time=parse_hhmm(form.event_time.data),
             duration_hours=duration,
@@ -485,6 +520,7 @@ def api_events():
                 'location': e.location or '',
                 'submitter_name': e.submitter_name,
                 'submitter_email': e.submitter_email,
+                'submitter_phone': e.submitter_phone or '',
                 'event_type': e.event_type or '',
                 'guest_count': e.guest_count or 0,
                 'duration_hours': e.duration_hours or 0,
@@ -635,6 +671,17 @@ def init_db_cli():
     db.create_all()
     ensure_default_weekly_hours()
     print('Database tables created (and default weekly hours seeded if none existed).')
+
+    # Optional first-admin bootstrap for hosted deployments where there is no interactive
+    # terminal: set ADMIN_USERNAME, ADMIN_EMAIL and ADMIN_PASSWORD. Only runs while no
+    # admin exists, so it is safe to leave in place; remove ADMIN_PASSWORD afterwards.
+    u, e, p = (os.environ.get(k, '').strip() for k in ('ADMIN_USERNAME', 'ADMIN_EMAIL', 'ADMIN_PASSWORD'))
+    if u and e and p and Admin.query.count() == 0:
+        admin = Admin(username=u, email=e)
+        admin.set_password(p)
+        db.session.add(admin)
+        db.session.commit()
+        print(f'First admin "{u}" created from environment variables.')
 
 
 @app.cli.command('create-admin')

@@ -1,134 +1,270 @@
+/* ==========================================================================
+   Coco Café — Brand Style Guide
+   Primary:   Dark Navy #292f35 · Teal #669191 · White #ffffff
+   Secondary: Coral #e54849 · Dusk Green #5f6459 · Dusty Rose #e6c2bc
+              Dark Crimson #590d11 · Gold #d49e43 · True Black #000000
+   Type:      EB Garamond (headings & display) · Open Sans (body copy)
+   ========================================================================== */
+
 :root {
-  --primary: #2563eb;
-  --primary-dark: #1d4ed8;
-  --bg: #f8fafc;
-  --card-bg: #ffffff;
-  --border: #e2e8f0;
-  --text: #1e293b;
-  --text-light: #64748b;
-  --success: #16a34a;
-  --error: #dc2626;
-  --pending: #d97706;
+  /* Brand palette */
+  --navy: #292f35;
+  --teal: #669191;
+  --white: #ffffff;
+  --coral: #e54849;
+  --dusk-green: #5f6459;
+  --dusty-rose: #e6c2bc;
+  --crimson: #590d11;
+  --gold: #d49e43;
+  --black: #000000;
+
+  /* UI roles (built from the palette) */
+  --primary: var(--navy);
+  --primary-dark: var(--dusk-green);
+  --accent: var(--gold);
+  --bg: #fbf5f4;                                   /* Dusty Rose, ~20% on white */
+  --card-bg: var(--white);
+  --border: #ecd5d0;                               /* Dusty Rose, softened */
+  --text: var(--navy);
+  --text-light: var(--dusk-green);
+  --success: var(--dusk-green);
+  --error: var(--crimson);
+  --pending: var(--crimson);
+  --focus: var(--teal);
+  --tint-teal: #e9f0f0;                            /* Teal, ~15% on white */
+  --tint-gold: #f6ead3;                            /* Gold, ~25% on white */
+
+  --font-heading: "EB Garamond", Garamond, "Times New Roman", serif;
+  --font-body: "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 * { box-sizing: border-box; }
 
-body {
+/* `html body` out-ranks Bootstrap's `body` rule on pages that load it */
+html body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-body);
+  font-weight: 400;
   background: var(--bg);
   color: var(--text);
+  line-height: 1.55;
 }
 
-.navbar {
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  color: var(--navy);
+  letter-spacing: 0.005em;
+}
+/* `body h*` out-ranks Bootstrap's heading rules on the submit page */
+body h1 { font-size: 2.4rem; font-weight: 800; line-height: 1.15; margin: 0 0 0.25rem; }
+body h2 { font-weight: 600; }
+body h3 { font-weight: 600; }
+h1 + .card-form, h1 + .event-list { margin-top: 1rem; }
+
+/* ---------- Navbar ------------------------------------------------------ */
+/* `body .x` selectors out-rank Bootstrap's `.navbar`, `.navbar-brand` and
+   `.container` rules on the pages that load Bootstrap (the submit form). */
+body .navbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: var(--card-bg);
-  border-bottom: 1px solid var(--border);
-  padding: 1rem 2rem;
+  background: var(--navy);
+  border-bottom: 3px solid var(--gold);
+  padding: 1rem 2rem;                              /* generous clear space around the logo */
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.75rem 1.5rem;
 }
 
-.navbar-brand { font-weight: 700; font-size: 1.1rem; }
+body .navbar-brand { display: inline-flex; align-items: center; padding: 0; margin: 0; }
+.navbar-brand img { display: block; height: 76px; width: auto; }  /* never crop or skew */
 
+.navbar-links { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1.5rem; }
 .navbar-links a {
-  margin-left: 1.25rem;
   text-decoration: none;
-  color: var(--text-light);
-  font-size: 0.95rem;
+  color: var(--white);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 0.25rem 0;
+  border-bottom: 2px solid transparent;
 }
+.navbar-links a:hover,
+.navbar-links a:focus-visible { color: var(--gold); border-bottom-color: var(--gold); outline: none; }
 
-.navbar-links a:hover { color: var(--primary); }
-
-.container {
+/* ---------- Layout ------------------------------------------------------ */
+body .container {
+  width: 100%;
   max-width: 900px;
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 2.5rem 1.5rem 3rem;
 }
 
-h1 { margin-bottom: 0.25rem; }
-.subtitle { color: var(--text-light); margin-top: 0; margin-bottom: 1.5rem; }
+.subtitle { color: var(--text-light); margin-top: 0; margin-bottom: 1.75rem; }
 
+/* ---------- Flash messages --------------------------------------------- */
 .flash {
   padding: 0.75rem 1rem;
   border-radius: 8px;
   margin-bottom: 1rem;
   font-size: 0.95rem;
+  border-left: 4px solid transparent;
 }
-.flash-success { background: #dcfce7; color: #166534; }
-.flash-error { background: #fee2e2; color: #991b1b; }
+.flash-success { background: var(--tint-teal); color: var(--navy); border-left-color: var(--teal); }
+.flash-error   { background: #f7e3e0; color: var(--crimson); border-left-color: var(--coral); }
 
+/* ---------- Forms ------------------------------------------------------- */
 .card-form {
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1.75rem;
+  box-shadow: 0 1px 2px rgba(41, 47, 53, 0.04);
 }
 .card-form.narrow { max-width: 400px; }
 
 .field { margin-bottom: 1.1rem; display: flex; flex-direction: column; }
-.field label { font-size: 0.85rem; font-weight: 600; margin-bottom: 0.35rem; color: var(--text-light); }
+.field label {
+  font-size: 0.8rem;
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+  color: var(--dusk-green);
+  letter-spacing: 0.02em;
+}
 .field input, .field textarea, .field select {
   padding: 0.6rem 0.7rem;
-  border: 1px solid var(--border);
+  border: 1px solid #d9bdb7;
   border-radius: 8px;
   font-size: 0.95rem;
-  font-family: inherit;
+  font-family: var(--font-body);
+  color: var(--navy);
+  background: var(--white);
 }
 .field input:focus, .field textarea:focus, .field select:focus {
   outline: none;
-  border-color: var(--primary);
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(102, 145, 145, 0.25);
 }
+.field input::placeholder, .field textarea::placeholder { color: #8d918a; }
 .field-row { display: flex; gap: 1rem; }
 .field-row .field { flex: 1; }
 
-.error { color: var(--error); font-size: 0.8rem; margin-top: 0.25rem; }
+.error { color: var(--coral); font-size: 0.8rem; margin-top: 0.25rem; font-weight: 600; }
 
-.btn {
-  border: none;
+/* ---------- Buttons ----------------------------------------------------- */
+/* `.btn.btn-*` out-ranks Bootstrap's `.btn-*` on pages that load it */
+.btn,
+.btn.btn-primary,
+.btn.btn-approve,
+.btn.btn-reject {
   border-radius: 8px;
   padding: 0.65rem 1.25rem;
-  font-size: 0.95rem;
-  font-weight: 600;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
   cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
 }
-.btn-primary { background: var(--primary); color: white; }
-.btn-primary:hover { background: var(--primary-dark); }
-.btn-approve { background: #dcfce7; color: #166534; margin-right: 0.5rem; }
-.btn-approve:hover { background: #bbf7d0; }
-.btn-reject { background: #fee2e2; color: #991b1b; }
-.btn-reject:hover { background: #fecaca; }
+.btn.btn-primary {
+  --bs-btn-bg: var(--navy);
+  --bs-btn-border-color: var(--navy);
+  --bs-btn-hover-bg: var(--dusk-green);
+  --bs-btn-hover-border-color: var(--dusk-green);
+  --bs-btn-active-bg: var(--dusk-green);
+  --bs-btn-active-border-color: var(--dusk-green);
+  background: var(--navy);
+  border: 1px solid var(--navy);
+  color: var(--white);
+}
+.btn.btn-primary:hover, .btn.btn-primary:focus-visible {
+  background: var(--dusk-green);
+  border-color: var(--dusk-green);
+  color: var(--white);
+}
+.btn.btn-primary:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
 
+.btn.btn-approve {
+  background: var(--teal);
+  border: 1px solid var(--teal);
+  color: var(--navy);
+  margin-right: 0.5rem;
+}
+.btn.btn-approve:hover { background: #7aa3a3; border-color: #7aa3a3; color: var(--navy); }
+
+.btn.btn-reject {
+  background: transparent;
+  border: 1px solid var(--crimson);
+  color: var(--crimson);
+}
+.btn.btn-reject:hover { background: var(--crimson); border-color: var(--crimson); color: var(--white); }
+
+/* ---------- Pending approvals ------------------------------------------ */
 .event-list { display: flex; flex-direction: column; gap: 1rem; }
 .event-card {
   background: var(--card-bg);
   border: 1px solid var(--border);
+  border-left: 4px solid var(--gold);
   border-radius: 12px;
   padding: 1.25rem 1.5rem;
+  box-shadow: 0 1px 2px rgba(41, 47, 53, 0.04);
 }
 .event-card-header { display: flex; justify-content: space-between; align-items: center; }
-.event-card h3 { margin: 0; }
-.badge { padding: 0.2rem 0.6rem; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
-.badge-pending { background: #fef3c7; color: var(--pending); }
+body .event-card h3 { margin: 0; font-size: 1.4rem; }
+.badge {
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.badge-pending { background: var(--tint-gold); color: var(--crimson); border: 1px solid var(--gold); }
 .submitter-line { color: var(--text-light); font-size: 0.85rem; }
 .event-actions { display: flex; margin-top: 0.75rem; }
 .event-actions form { display: inline; }
 
 .admin-list { padding-left: 1.2rem; color: var(--text-light); }
 
+/* ---------- Calendar (FullCalendar) ------------------------------------ */
 #calendar {
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1.25rem;
 }
+/* FullCalendar puts its `fc` class on #calendar itself; the ID selector out-ranks its `.fc` variable block */
+#calendar.fc, #calendar .fc {
+  --fc-border-color: var(--border);
+  --fc-page-bg-color: var(--white);
+  --fc-neutral-bg-color: var(--bg);
+  --fc-today-bg-color: var(--tint-gold);
+  --fc-event-bg-color: var(--teal);
+  --fc-event-border-color: var(--teal);
+  --fc-event-text-color: var(--navy);
+  --fc-button-text-color: var(--white);
+  --fc-button-bg-color: var(--navy);
+  --fc-button-border-color: var(--navy);
+  --fc-button-hover-bg-color: var(--dusk-green);
+  --fc-button-hover-border-color: var(--dusk-green);
+  --fc-button-active-bg-color: var(--coral);
+  --fc-button-active-border-color: var(--coral);
+  --fc-list-event-hover-bg-color: var(--tint-teal);
+  font-family: var(--font-body);
+}
+#calendar.fc .fc-toolbar-title { font-family: var(--font-heading); font-weight: 800; color: var(--navy); }
+#calendar.fc .fc-col-header-cell-cushion,
+#calendar.fc .fc-daygrid-day-number { color: var(--navy); text-decoration: none; }
+#calendar.fc .fc-col-header-cell { background: var(--bg); }
+#calendar.fc .fc-button { font-weight: 700; letter-spacing: 0.02em; text-transform: capitalize; }
+#calendar.fc .fc-button:focus { box-shadow: 0 0 0 3px rgba(212, 158, 67, 0.5); }
+#calendar.fc .fc-event { font-weight: 600; }
+#calendar.fc .fc-daygrid-event-dot { border-color: var(--teal); }
 
+/* ---------- Modal ------------------------------------------------------- */
 .modal-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(15, 23, 42, 0.45);
+  background: rgba(41, 47, 53, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -136,56 +272,119 @@ h1 { margin-bottom: 0.25rem; }
 }
 .modal {
   background: var(--card-bg);
+  border-top: 4px solid var(--gold);
   border-radius: 12px;
   padding: 1.75rem;
   max-width: 520px;
   width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
   position: relative;
 }
+body .modal h2 { margin-top: 0; font-size: 1.7rem; }
 .modal-close {
   position: absolute;
   top: 0.75rem;
   right: 1rem;
   background: none;
   border: none;
-  font-size: 1.4rem;
+  font-size: 1.6rem;
+  line-height: 1;
   cursor: pointer;
-  color: var(--text-light);
+  color: var(--dusk-green);
 }
+.modal-close:hover { color: var(--coral); }
 .modal-submitter { color: var(--text-light); font-size: 0.85rem; }
+.modal hr { border: 0; border-top: 1px solid var(--border); margin: 1rem 0; }
 
-/* Form sections */
+/* ---------- Form sections ---------------------------------------------- */
 .form-section { border-top: 1px solid var(--border); margin-top: 1.5rem; padding-top: 1.5rem; }
-.form-section h2 { font-size: 1.05rem; margin: 0 0 0.25rem; }
+body .form-section h2 { font-size: 1.5rem; margin: 0 0 0.25rem; }
 .form-section-hint { color: var(--text-light); font-size: 0.85rem; margin: 0 0 0.9rem; }
 .hint { font-size: 0.78rem; color: var(--text-light); margin-top: 0.2rem; }
-.field select { padding: 0.6rem 0.7rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; font-family: inherit; background: white; }
 .field select:disabled { background: var(--bg); color: var(--text-light); }
 
-/* Layout picker */
+/* Menu row */
+.menu-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1rem; color: var(--text-light); font-size: 0.9rem; }
+
+/* Menu offcanvas (Bootstrap) */
+.offcanvas.menu-offcanvas { --bs-offcanvas-width: clamp(320px, 35vw, 560px); }
+.offcanvas { background: var(--white); color: var(--navy); font-family: var(--font-body); }
+.offcanvas-header { background: var(--navy); border-bottom: 3px solid var(--gold); }
+.offcanvas-title { font-family: var(--font-heading); font-weight: 600; font-size: 1.5rem; color: var(--white); }
+.offcanvas-header .btn-close { filter: invert(1) grayscale(100%) brightness(200%); opacity: 0.9; }
+.offcanvas-body p { color: var(--text-light); font-size: 0.85rem; }
+
+/* ---------- Layout picker ---------------------------------------------- */
 .layout-group[hidden] { display: none; }
 .layout-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
-.layout-card { display: block; border: 2px solid var(--border); border-radius: 12px; padding: 0.6rem; cursor: pointer; background: var(--card-bg); }
-.layout-card:hover { border-color: var(--primary); }
-.layout-card:has(input:checked) { border-color: var(--primary); background: #eff6ff; }
+.layout-card {
+  display: block;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 0.6rem;
+  cursor: pointer;
+  background: var(--card-bg);
+  transition: border-color 0.15s, background-color 0.15s;
+}
+.layout-card:hover { border-color: var(--teal); }
+.layout-card:has(input:checked) { border-color: var(--navy); background: var(--tint-teal); }
 .layout-card img { width: 100%; height: auto; display: block; border-radius: 8px; }
 .layout-card-caption { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.5rem; font-size: 0.88rem; }
+.layout-card-caption input[type="radio"] { accent-color: var(--navy); }
 
-/* Admin read-only summaries */
+/* ---------- Admin read-only summaries ---------------------------------- */
 .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.5rem 1.5rem; margin: 0.75rem 0; font-size: 0.88rem; }
-.detail-grid dt { font-weight: 600; color: var(--text-light); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.02em; }
+.detail-grid dt { font-weight: 700; color: var(--dusk-green); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; }
 .detail-grid dd { margin: 0 0 0.5rem; }
-.price-summary-inline { font-weight: 600; color: #166534; }
+.price-summary-inline { font-weight: 700; color: var(--dusk-green); }
 .layout-thumb { width: 100%; max-width: 360px; height: auto; border: 1px solid var(--border); border-radius: 8px; margin: 0.3rem 0 0.6rem; display: block; }
 
-/* Availability admin */
-.section-title { font-size: 1.05rem; margin-top: 0; }
+/* ---------- Availability admin ----------------------------------------- */
+body .section-title { font-size: 1.5rem; margin-top: 0; }
 .avail-table { width: 100%; border-collapse: collapse; margin-bottom: 0.75rem; font-size: 0.92rem; }
-.avail-table th { text-align: left; font-size: 0.78rem; text-transform: uppercase; color: var(--text-light); padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); }
+.avail-table th {
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--dusk-green);
+  padding: 0.4rem 0.5rem;
+  border-bottom: 2px solid var(--gold);
+}
 .avail-table td { padding: 0.45rem 0.5rem; border-bottom: 1px solid var(--border); }
-.avail-table input[type="time"] { padding: 0.35rem 0.5rem; border: 1px solid var(--border); border-radius: 6px; font-family: inherit; }
+.avail-table input[type="checkbox"] { accent-color: var(--navy); width: 1rem; height: 1rem; }
+.avail-table input[type="time"] {
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #d9bdb7;
+  border-radius: 6px;
+  font-family: var(--font-body);
+  color: var(--navy);
+}
+.avail-table input[type="time"]:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(102, 145, 145, 0.25); }
 .override-table { background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; }
 .override-table form { display: inline; }
 
-/* flatpickr: make disabled days clearly unavailable */
+/* ---------- Date picker (flatpickr) ------------------------------------ */
+.flatpickr-calendar { font-family: var(--font-body); border: 1px solid var(--border); box-shadow: 0 8px 24px rgba(41, 47, 53, 0.15); }
 .flatpickr-day.flatpickr-disabled { opacity: 0.35; }
+.flatpickr-calendar .flatpickr-day.selected,
+.flatpickr-calendar .flatpickr-day.selected:hover { background: var(--navy); border-color: var(--navy); color: var(--white); }
+.flatpickr-calendar .flatpickr-day.today { border-color: var(--gold); }
+.flatpickr-calendar .flatpickr-day.today:hover { background: var(--gold); border-color: var(--gold); color: var(--navy); }
+.flatpickr-calendar .flatpickr-day:hover { background: var(--tint-teal); border-color: var(--tint-teal); }
+.flatpickr-calendar .flatpickr-months .flatpickr-month,
+.flatpickr-calendar .flatpickr-current-month .flatpickr-monthDropdown-months,
+.flatpickr-calendar span.flatpickr-weekday { color: var(--navy); fill: var(--navy); }
+.flatpickr-calendar .flatpickr-current-month { font-family: var(--font-heading); font-weight: 600; }
+
+/* ---------- Small screens ---------------------------------------------- */
+@media (max-width: 640px) {
+  body .navbar { padding: 0.75rem 1rem; }
+  .navbar-brand img { height: 56px; }
+  .navbar-links { gap: 0.25rem 1rem; }
+  body .container { padding: 1.5rem 1rem 2rem; }
+  body h1 { font-size: 2rem; }
+  .field-row { flex-direction: column; gap: 0; }
+}

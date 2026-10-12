@@ -2,7 +2,6 @@
 {% block title %}Availability{% endblock %}
 {% block content %}
   <h1>Availability</h1>
-  <p class="subtitle">Control which days and times guests can choose on the submission form. Approved events automatically block their time slot.</p>
 
   <form method="POST" action="{{ url_for('save_weekly_hours') }}" class="card-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
