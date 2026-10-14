@@ -361,6 +361,9 @@ class EventSubmissionForm(FlaskForm):
     def validate_event_date(self, field):
         if field.data and field.data < date.today():
             raise ValidationError('Please choose a date in the future.')
+        if field.data and field.data < date.today() + timedelta(days=21):
+            raise ValidationError('Event must be scheduled 3 weeks in advance.')
+            
 
     def validate_event_time(self, field):
         start = parse_hhmm(field.data)
