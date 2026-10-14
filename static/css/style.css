@@ -218,6 +218,19 @@ body .event-card h3 { margin: 0; font-size: 1.4rem; }
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
+.badge-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: var(--coral);
+  color: white;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  letter-spacing: normal;
+}
 .badge-pending { background: var(--tint-gold); color: var(--crimson); border: 1px solid var(--gold); }
 .submitter-line { color: var(--text-light); font-size: 0.85rem; }
 .event-actions { display: flex; margin-top: 0.75rem; }
