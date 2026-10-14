@@ -541,6 +541,11 @@ def admin_pending():
     conflicts = {e.id: event_conflicts(e) for e in pending_events}
     return render_template('pending.html', events=pending_events, conflicts=conflicts)
 
+@app.route('/admin/pending-count')
+@login_required
+def admin_pending_count():
+    count = Event.query.filter_by(status='pending').count()
+    return jsonify({'pending_count': count})
 
 @app.route('/admin/events/<int:event_id>/approve', methods=['POST'])
 @login_required
