@@ -45,7 +45,7 @@
           {% for error in form.duration_hours.errors %}<span class="error">{{ error }}</span>{% endfor %}
         </div>
         <div class="field">
-          {{ form.event_date.label }}
+          <label for="event_date">{{ form.event_date.label.text }} <span class="info-icon" title="Must schedule at least 3 weeks in advance">ℹ️</span></label>
           {{ form.event_date(id="event_date", type="text", autocomplete="off", placeholder="Select a date") }}
           {% for error in form.event_date.errors %}<span class="error">{{ error }}</span>{% endfor %}
         </div>
