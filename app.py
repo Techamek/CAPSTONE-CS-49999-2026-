@@ -285,9 +285,6 @@ class Availability:
         length = timedelta(hours=duration_hours)
         now = datetime.now()
         busy = self.busy.get(d, [])
-        #Event exists on date, cannot schedule
-        if busy:
-            return []
         out = []
         t = datetime.combine(d, win[0])
         while t + length <= day_close:
@@ -298,15 +295,14 @@ class Availability:
         return out
 
     def available_dates(self, duration_hours):
-        three_weeks = 21 #event must be scheduled 3 weeks in advance
         today = date.today()
         return [
             (today + timedelta(days=i)).isoformat()
-            for i in range(three_weeks, BOOKING_WINDOW_DAYS + 1)
+            for i in range(BOOKING_WINDOW_DAYS + 1)
             if self.slots(today + timedelta(days=i), duration_hours)
         ]
-    
-    
+
+
 def event_conflicts(event):
     """Other approved events overlapping this one."""
     span = event.start_end()
@@ -315,7 +311,10 @@ def event_conflicts(event):
     others = Event.query.filter(
         Event.status == 'approved', Event.event_date == event.event_date, Event.id != event.id
     ).all()
-    return others
+    return [
+        o for o in others
+        if o.start_end() and span[0] < o.start_end()[1] and span[1] > o.start_end()[0]
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -541,6 +540,11 @@ def admin_pending():
     conflicts = {e.id: event_conflicts(e) for e in pending_events}
     return render_template('pending.html', events=pending_events, conflicts=conflicts)
 
+@app.route('/admin/pending-count')
+@login_required
+def admin_pending_count():
+    count = Event.query.filter_by(status='pending').count()
+    return jsonify({'pending_count': count})
 
 @app.route('/admin/events/<int:event_id>/approve', methods=['POST'])
 @login_required
