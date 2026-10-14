@@ -38,6 +38,7 @@ Settings -> Networking -> Generate Domain. Share that https address. Admin login
 ## 6. After the first login
 - Delete the `ADMIN_PASSWORD` variable (the account is already created).
 - Add more admins from the Manage Admins page.
+:)
 - Turn on database backups for the MySQL service.
 
 ## Changing the database later
