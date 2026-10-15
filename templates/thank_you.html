@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Thank You | Coco Café</title>
+  <link rel="icon" href="{{ url_for('static', filename='img/brand/favicon.png') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;1,400&family=Open+Sans:wght@300;400&display=swap" rel="stylesheet">
+  <style>
+    /* Coco Café brand: charcoal #292f35, white logo, soft gray arcs (brand guide, last page). */
+    :root { --charcoal: #292f35; --arc: #46494f; --ink: #ffffff; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body { background: var(--charcoal); color: var(--ink); overflow: hidden;
+           font-family: 'Open Sans', system-ui, sans-serif; }
+
+    .arcs { position: fixed; inset: 0; width: 100%; height: 100%; }
+    .arcs circle { fill: none; stroke: var(--arc); stroke-width: 19;
+                   stroke-dasharray: 1; stroke-dashoffset: 1;
+                   animation: draw 2.6s cubic-bezier(.45,.05,.25,1) forwards; }
+    .arcs circle:nth-child(2) { animation-delay: .25s; }
+    .arcs circle:nth-child(3) { animation-delay: .15s; }
+    .arcs circle:nth-child(4) { animation-delay: .4s; }
+
+    .stage { position: relative; min-height: 100%; display: flex; flex-direction: column;
+             align-items: center; justify-content: center; text-align: center; padding: 2rem 16px; }
+    .logo { width: min(440px, 74vw); height: auto; opacity: 0; transform: translateY(10px);
+            animation: rise 1.8s ease .6s forwards; }
+    .thanks { margin: 2.2rem 0 0; font-family: 'EB Garamond', Georgia, serif; font-style: italic;
+              font-weight: 400; font-size: clamp(1.4rem, 3.4vw, 1.9rem); letter-spacing: .01em;
+              opacity: 0; animation: rise 1.6s ease 1.9s forwards; }
+    .note { margin: .6rem 0 0; font-weight: 300; font-size: clamp(.92rem, 2.2vw, 1.02rem);
+            color: rgba(255,255,255,.78); max-width: 34ch; line-height: 1.6;
+            opacity: 0; animation: rise 1.6s ease 2.4s forwards; }
+    .again { margin-top: 2.4rem; font-size: .82rem; letter-spacing: .06em; text-transform: uppercase;
+             color: rgba(255,255,255,.55); text-decoration: none; padding-bottom: 2px;
+             border-bottom: 1px solid rgba(255,255,255,.25);
+             opacity: 0; animation: rise 1.4s ease 3.4s forwards; transition: color .3s, border-color .3s; }
+    .again:hover, .again:focus-visible { color: #fff; border-color: #fff; outline: none; }
+
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+    @keyframes rise { to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) {
+      .arcs circle { animation: none; stroke-dashoffset: 0; }
+      .logo, .thanks, .note, .again { animation: none; opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Arc positions match the brand guide's closing page (432 x 288 artboard). -->
+  <svg class="arcs" viewBox="0 0 432 288" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <circle cx="295.56" cy="-113.4" r="212.62" pathLength="1" transform="rotate(-90 295.56 -113.4)"/>
+    <circle cx="295.56" cy="-113.4" r="171.97" pathLength="1" transform="rotate(-90 295.56 -113.4)"/>
+    <circle cx="79.56" cy="383.4" r="212.62" pathLength="1" transform="rotate(90 79.56 383.4)"/>
+    <circle cx="79.56" cy="383.4" r="171.97" pathLength="1" transform="rotate(90 79.56 383.4)"/>
+  </svg>
+
+  <main class="stage">
+    <img class="logo" src="{{ url_for('static', filename='img/brand/logo-mark-white.svg') }}" alt="Coco Café">
+    <h1 class="thanks">Thank you{% if name %}, {{ name }}{% endif %}.</h1>
+    <p class="note">Your request is in. We're so glad you thought of us, and we'll be in touch soon.</p>
+    <a class="again" href="{{ url_for('submit_event') }}">Plan another event</a>
+  </main>
+</body>
+</html>

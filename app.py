@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, date, time, timedelta
 
-from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
+from flask import Flask, render_template, redirect, url_for, flash, request, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 from flask_wtf import FlaskForm, CSRFProtect
@@ -48,7 +48,8 @@ db_password = os.environ.get('DB_PASSWORD', '')
 db_host = os.environ.get('DB_HOST', 'localhost')
 db_name = os.environ.get('DB_NAME', 'calendar_app')
 
-# DATABASE_URL (optional)
+# DATABASE_URL (optional) overrides the MySQL settings above, e.g. for SQLite testing or a
+# hosted database. Railway's MySQL plugin provides MYSQL_URL, used if DATABASE_URL is unset.
 _db_url = os.environ.get('DATABASE_URL') or os.environ.get('MYSQL_URL')
 if _db_url and _db_url.startswith('mysql://'):
     _db_url = 'mysql+pymysql://' + _db_url[len('mysql://'):]   # use the PyMySQL driver
@@ -389,7 +390,13 @@ class EventSubmissionForm(FlaskForm):
         choices=[(t, t) for t in EVENT_TYPE_CHOICES],
         validators=[DataRequired()],
     )
+    # Shown only when "Other" is chosen; its text is saved as the event type.
+    event_type_other = StringField('Tell us the type of event', validators=[Length(max=50)])
     description = TextAreaField('Description', validators=[Length(max=2000)])
+
+    def validate_event_type_other(self, field):
+        if self.event_type.data == 'Other' and not (field.data or '').strip():
+            raise ValidationError('Please tell us what kind of event this is.')
 
     guest_count = IntegerField(
         'Number of Guests',
@@ -471,7 +478,8 @@ def submit_event():
         price = calculate_price(form.guest_count.data, duration)
         event = Event(
             title=form.title.data,
-            event_type=form.event_type.data,
+            event_type=(form.event_type_other.data.strip()
+                        if form.event_type.data == 'Other' else form.event_type.data),
             description=form.description.data,
             submitter_name=form.submitter_name.data,
             submitter_email=form.submitter_email.data,
@@ -488,9 +496,9 @@ def submit_event():
         db.session.add(event)
         db.session.commit()
         notify_submitter(event, 'requested')
-        flash('Thanks! Your event was submitted and is awaiting admin approval. '
-              'A confirmation email is on its way.', 'success')
-        return redirect(url_for('submit_event'))
+        # Remember the first name for the thank-you page (shown once, then cleared).
+        session['thanks_name'] = (event.submitter_name or '').strip().split(' ')[0]
+        return redirect(url_for('thank_you'))
 
     layouts_by_group = {'35': [], '50': []}
     for key, info in LAYOUTS.items():
@@ -499,6 +507,15 @@ def submit_event():
         'submit.html', form=form, max_capacity=MAX_GUEST_CAPACITY,
         layouts_by_group=layouts_by_group, small_group_max=LAYOUT_SMALL_GROUP_MAX,
     )
+
+
+@app.route('/thank-you')
+def thank_you():
+    """Branded page shown right after a request is submitted."""
+    name = session.pop('thanks_name', None)
+    if name is None:   # only reachable straight after submitting
+        return redirect(url_for('submit_event'))
+    return render_template('thank_you.html', name=name)
 
 
 def _duration_arg():
