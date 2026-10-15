@@ -15,6 +15,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import logging
+from emailer import send_email
+
+logging.basicConfig(level=logging.INFO)
+
 app = Flask(__name__)
 
 # Deployment (Railway): the site sits behind an HTTPS proxy. Trust its X-Forwarded-*
@@ -43,8 +48,7 @@ db_password = os.environ.get('DB_PASSWORD', '')
 db_host = os.environ.get('DB_HOST', 'localhost')
 db_name = os.environ.get('DB_NAME', 'calendar_app')
 
-# DATABASE_URL (optional) overrides the MySQL settings above, e.g. for SQLite testing or a
-# hosted database. Railway's MySQL plugin provides MYSQL_URL, used if DATABASE_URL is unset.
+# DATABASE_URL (optional)
 _db_url = os.environ.get('DATABASE_URL') or os.environ.get('MYSQL_URL')
 if _db_url and _db_url.startswith('mysql://'):
     _db_url = 'mysql+pymysql://' + _db_url[len('mysql://'):]   # use the PyMySQL driver
@@ -319,6 +323,62 @@ def event_conflicts(event):
 
 
 # ---------------------------------------------------------------------------
+# Email notifications to the person who submitted the event
+# ---------------------------------------------------------------------------
+
+def _event_summary(event):
+    when = event.event_date.strftime('%A, %B %d, %Y').replace(' 0', ' ')
+    if event.event_time:
+        when += f" at {fmt_time(event.event_time)}"
+    lines = [
+        f"Event: {event.title}",
+        f"Type: {event.event_type or '-'}",
+        f"Date: {when}",
+        f"Duration: {event.duration_hours:g} hours" if event.duration_hours else None,
+        f"Guests: {event.guest_count}" if event.guest_count else None,
+    ]
+    layout = event.layout_info()
+    if layout:
+        lines.append(f"Table layout: {layout['label']} ({layout['seats']} seats)")
+    return "\n".join(l for l in lines if l)
+
+
+EMAIL_TEMPLATES = {
+    'requested': (
+        'We received your event request: {title}',
+        "Hi {name},\n\n"
+        "Thanks for your request! We've received it and will review it shortly. "
+        "You'll get another email once it has been approved or declined.\n\n"
+        "{summary}\n\n"
+        "Coco Cafe",
+    ),
+    'approved': (
+        'Your event has been approved: {title}',
+        "Hi {name},\n\n"
+        "Good news! Your event request has been approved, and your date and time are reserved.\n\n"
+        "{summary}\n\n"
+        "We'll be in touch with any next steps. See you then!\n\n"
+        "Coco Cafe",
+    ),
+    'rejected': (
+        'Update on your event request: {title}',
+        "Hi {name},\n\n"
+        "Thank you for your interest. Unfortunately, we aren't able to accommodate the event "
+        "request below. You're welcome to submit a new request for a different date or time.\n\n"
+        "{summary}\n\n"
+        "Coco Cafe",
+    ),
+}
+
+
+def notify_submitter(event, kind):
+    """Email the submitter about their event. kind: 'requested', 'approved' or 'rejected'."""
+    subject, body = EMAIL_TEMPLATES[kind]
+    fields = {'title': event.title, 'name': event.submitter_name, 'summary': _event_summary(event)}
+    send_email(event.submitter_email, subject.format(**fields), body.format(**fields))
+
+
+# ---------------------------------------------------------------------------
 # Forms
 # ---------------------------------------------------------------------------
 
@@ -427,7 +487,9 @@ def submit_event():
         )
         db.session.add(event)
         db.session.commit()
-        flash('Thanks! Your event was submitted and is awaiting admin approval.', 'success')
+        notify_submitter(event, 'requested')
+        flash('Thanks! Your event was submitted and is awaiting admin approval. '
+              'A confirmation email is on its way.', 'success')
         return redirect(url_for('submit_event'))
 
     layouts_by_group = {'35': [], '50': []}
@@ -559,6 +621,7 @@ def approve_event(event_id):
     event.reviewed_by = current_user.id
     event.reviewed_at = datetime.utcnow()
     db.session.commit()
+    notify_submitter(event, 'approved')
     flash(f'Approved "{event.title}".', 'success')
     return redirect(url_for('admin_pending'))
 
@@ -571,6 +634,7 @@ def reject_event(event_id):
     event.reviewed_by = current_user.id
     event.reviewed_at = datetime.utcnow()
     db.session.commit()
+    notify_submitter(event, 'rejected')
     flash(f'Rejected "{event.title}".', 'success')
     return redirect(url_for('admin_pending'))
 
