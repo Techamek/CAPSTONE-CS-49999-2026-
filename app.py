@@ -427,7 +427,7 @@ def submit_event():
         )
         db.session.add(event)
         db.session.commit()
-        flash('Thanks! Your event was submitted and is awaiting admin approval.', 'success')
+        flash('Thanks! Your event was submitted and is awaiting staff approval.', 'success')
         return redirect(url_for('submit_event'))
 
     layouts_by_group = {'35': [], '50': []}
