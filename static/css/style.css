@@ -155,7 +155,8 @@ body .container {
 .btn,
 .btn.btn-primary,
 .btn.btn-approve,
-.btn.btn-reject {
+.btn.btn-reject,
+.btn.btn-delete {
   border-radius: 8px;
   padding: 0.65rem 1.25rem;
   font-family: var(--font-body);
@@ -197,6 +198,13 @@ body .container {
   color: var(--crimson);
 }
 .btn.btn-reject:hover { background: var(--crimson); border-color: var(--crimson); color: var(--white); }
+
+.btn.btn-delete {
+  background: transparent;
+  border: 1px solid var(--crimson);
+  color: var(--crimson);
+}
+.btn.btn-delete:hover { background: var(--teal); border-color: var(--teal); color: var(--white); }
 
 /* ---------- Pending approvals ------------------------------------------ */
 .event-list { display: flex; flex-direction: column; gap: 1rem; }

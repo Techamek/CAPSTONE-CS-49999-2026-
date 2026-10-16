@@ -12,6 +12,12 @@
     <div class="modal">
       <button id="modal-close" class="modal-close">&times;</button>
       <h2 id="modal-title"></h2>
+      <div class="event-actions">
+      <form method="POST" id="delete-event-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+      <button type="submit" class="btn btn-delete">Delete</button>
+      </form>
+      </div>
       <p id="modal-when"></p>
       <p id="modal-location"></p>
       <p id="modal-description"></p>
@@ -77,6 +83,9 @@
           img.style.display = props.layout_image ? '' : 'none';
           img.src = props.layout_image || '';
           link.href = props.layout_image || '#';
+
+          var deleteUrl = "{{ url_for('delete_event', event_id=999999) }}";
+          document.getElementById('delete-event-form').action = deleteUrl.replace('999999', info.event.id);
 
           modal.style.display = 'flex';
         }
