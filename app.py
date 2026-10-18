@@ -437,14 +437,24 @@ def submit_event():
         'submit.html', form=form, max_capacity=MAX_GUEST_CAPACITY,
         layouts_by_group=layouts_by_group, small_group_max=LAYOUT_SMALL_GROUP_MAX,
     )
-
-
 def _duration_arg():
     try:
         d = float(request.args.get('duration') or 1)
     except ValueError:
         d = 1.0
     return d if 0 < d <= 24 else 1.0
+
+@app.route('/admin/events/<int:event_id>/delete', methods=['POST'])
+@login_required
+def delete_event(event_id):
+    event = Event.query.get_or_404(event_id)
+    db.session.delete(event)
+    db.session.commit()
+    flash('Event deleted successfully.', 'success')
+    return redirect(url_for('admin_dashboard'))
+
+
+    
 
 
 @app.route('/api/availability/dates')
@@ -498,6 +508,13 @@ def admin_logout():
 @app.route('/admin/dashboard')
 @login_required
 def admin_dashboard():
+
+    Event.query.filter(
+        Event.event_date < date.today()
+    ).delete(synchronize_session=False)
+
+    db.session.commit()
+    
     return render_template('dashboard.html')
 
 
