@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, date, time, timedelta
 
-from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
+from flask import Flask, render_template, redirect, url_for, flash, request, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 from flask_wtf import FlaskForm, CSRFProtect
@@ -14,6 +14,11 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 
 load_dotenv()
+
+import logging
+from emailer import send_email
+
+logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 
@@ -319,6 +324,62 @@ def event_conflicts(event):
 
 
 # ---------------------------------------------------------------------------
+# Email notifications to the person who submitted the event
+# ---------------------------------------------------------------------------
+
+def _event_summary(event):
+    when = event.event_date.strftime('%A, %B %d, %Y').replace(' 0', ' ')
+    if event.event_time:
+        when += f" at {fmt_time(event.event_time)}"
+    lines = [
+        f"Event: {event.title}",
+        f"Type: {event.event_type or '-'}",
+        f"Date: {when}",
+        f"Duration: {event.duration_hours:g} hours" if event.duration_hours else None,
+        f"Guests: {event.guest_count}" if event.guest_count else None,
+    ]
+    layout = event.layout_info()
+    if layout:
+        lines.append(f"Table layout: {layout['label']} ({layout['seats']} seats)")
+    return "\n".join(l for l in lines if l)
+
+
+EMAIL_TEMPLATES = {
+    'requested': (
+        'We received your event request: {title}',
+        "Hi {name},\n\n"
+        "Thanks for your request! We've received it and will review it shortly. "
+        "You'll get another email once it has been approved or declined.\n\n"
+        "{summary}\n\n"
+        "Coco Cafe",
+    ),
+    'approved': (
+        'Your event has been approved: {title}',
+        "Hi {name},\n\n"
+        "Good news! Your event request has been approved, and your date and time are reserved.\n\n"
+        "{summary}\n\n"
+        "We'll be in touch with any next steps. See you then!\n\n"
+        "Coco Cafe",
+    ),
+    'rejected': (
+        'Update on your event request: {title}',
+        "Hi {name},\n\n"
+        "Thank you for your interest. Unfortunately, we aren't able to accommodate the event "
+        "request below. You're welcome to submit a new request for a different date or time.\n\n"
+        "{summary}\n\n"
+        "Coco Cafe",
+    ),
+}
+
+
+def notify_submitter(event, kind):
+    """Email the submitter about their event. kind: 'requested', 'approved' or 'rejected'."""
+    subject, body = EMAIL_TEMPLATES[kind]
+    fields = {'title': event.title, 'name': event.submitter_name, 'summary': _event_summary(event)}
+    send_email(event.submitter_email, subject.format(**fields), body.format(**fields))
+
+
+# ---------------------------------------------------------------------------
 # Forms
 # ---------------------------------------------------------------------------
 
@@ -329,7 +390,13 @@ class EventSubmissionForm(FlaskForm):
         choices=[(t, t) for t in EVENT_TYPE_CHOICES],
         validators=[DataRequired()],
     )
+    # Shown only when "Other" is chosen; its text is saved as the event type.
+    event_type_other = StringField('Tell us the type of event', validators=[Length(max=50)])
     description = TextAreaField('Description', validators=[Length(max=2000)])
+
+    def validate_event_type_other(self, field):
+        if self.event_type.data == 'Other' and not (field.data or '').strip():
+            raise ValidationError('Please tell us what kind of event this is.')
 
     guest_count = IntegerField(
         'Number of Guests',
@@ -414,7 +481,8 @@ def submit_event():
         price = calculate_price(form.guest_count.data, duration)
         event = Event(
             title=form.title.data,
-            event_type=form.event_type.data,
+            event_type=(form.event_type_other.data.strip()
+                        if form.event_type.data == 'Other' else form.event_type.data),
             description=form.description.data,
             submitter_name=form.submitter_name.data,
             submitter_email=form.submitter_email.data,
@@ -430,8 +498,10 @@ def submit_event():
         )
         db.session.add(event)
         db.session.commit()
-        flash('Thanks! Your event was submitted and is awaiting admin approval.', 'success')
-        return redirect(url_for('submit_event'))
+        notify_submitter(event, 'requested')
+        # Remember the first name for the thank-you page (shown once, then cleared).
+        session['thanks_name'] = (event.submitter_name or '').strip().split(' ')[0]
+        return redirect(url_for('thank_you'))
 
     layouts_by_group = {'35': [], '50': []}
     for key, info in LAYOUTS.items():
@@ -440,6 +510,15 @@ def submit_event():
         'submit.html', form=form, max_capacity=MAX_GUEST_CAPACITY,
         layouts_by_group=layouts_by_group, small_group_max=LAYOUT_SMALL_GROUP_MAX,
     )
+
+
+@app.route('/thank-you')
+def thank_you():
+    """Branded page shown right after a request is submitted."""
+    name = session.pop('thanks_name', None)
+    if name is None:   # only reachable straight after submitting
+        return redirect(url_for('submit_event'))
+    return render_template('thank_you.html', name=name)
 
 
 def _duration_arg():
@@ -562,6 +641,7 @@ def approve_event(event_id):
     event.reviewed_by = current_user.id
     event.reviewed_at = datetime.utcnow()
     db.session.commit()
+    notify_submitter(event, 'approved')
     flash(f'Approved "{event.title}".', 'success')
     return redirect(url_for('admin_pending'))
 
@@ -574,6 +654,7 @@ def reject_event(event_id):
     event.reviewed_by = current_user.id
     event.reviewed_at = datetime.utcnow()
     db.session.commit()
+    notify_submitter(event, 'rejected')
     flash(f'Rejected "{event.title}".', 'success')
     return redirect(url_for('admin_pending'))
 
