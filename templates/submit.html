@@ -157,7 +157,15 @@
           </div>
           <div class="row g-3 mb-2">
             <div class="col-sm-6">
-              <label for="event_date" class="form-label">{{ form.event_date.label.text }}</label>
+              <label for="event_date" class="form-label" title="testing">{{ form.event_date.label.text }}</label> 
+              <button
+                type="button"
+                class="btn btn-link p-0 ms-1 text-decoration-none"
+                title="Events must be booked at least 3 weeks in advance."
+                aria-label="Event date information"
+              >
+                ⓘ
+              </button>
               {{ form.event_date(class="form-control", id="event_date", type="text", autocomplete="off", placeholder="Select a date") }}
               {% for error in form.event_date.errors %}<div class="invalid-feedback d-block error">{{ error }}</div>{% endfor %}
             </div>

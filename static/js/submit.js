@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!picker) {
         picker = flatpickr(dateInput, {
           dateFormat: 'Y-m-d',
-          minDate: 'today',
+          minDate: new Date().fp_incr(21),
           disableMobile: true,
           enable: [enableFn],
           onChange: function () { initialTime = ''; loadSlots(); },
