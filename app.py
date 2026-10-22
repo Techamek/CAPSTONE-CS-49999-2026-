@@ -7,7 +7,7 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from flask_wtf import FlaskForm, CSRFProtect
 from wtforms import (
     StringField, TextAreaField, DateField, PasswordField, SubmitField,
-    SelectField, RadioField, IntegerField,
+    SelectField, RadioField, IntegerField, BooleanField,
 )
 from wtforms.validators import DataRequired, Length, EqualTo, NumberRange, ValidationError, Optional, Regexp
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import logging
-from emailer import send_email
+from emailer import send_email, email_configured
 
 logging.basicConfig(level=logging.INFO)
 
@@ -251,6 +251,16 @@ def parse_hhmm(value):
         return None
 
 
+def format_us_phone(value):
+    """Return a US number as (xxx) xxx-xxxx, or None if it isn't 10 digits (a leading 1 is allowed)."""
+    digits = ''.join(ch for ch in (value or '') if ch.isdigit())
+    if len(digits) == 11 and digits.startswith('1'):
+        digits = digits[1:]
+    if len(digits) != 10:
+        return None
+    return f"({digits[:3]}) {digits[3:6]}-{digits[6:]}"
+
+
 def fmt_time(t):
     return t.strftime('%I:%M %p').lstrip('0')
 
@@ -369,14 +379,35 @@ EMAIL_TEMPLATES = {
         "{summary}\n\n"
         "Coco Cafe",
     ),
+    'updated': (
+        'Your event details have been updated: {title}',
+        "Hi {name},\n\n"
+        "We've made a change to your reservation. Here are the current details:\n\n"
+        "{summary}\n\n"
+        "If anything looks wrong, just reply to this email and we'll sort it out.\n\n"
+        "Coco Cafe",
+    ),
+    'cancelled': (
+        'Your event has been cancelled: {title}',
+        "Hi {name},\n\n"
+        "Your reservation below has been cancelled. If you weren't expecting this, or you'd like "
+        "to book a new date, please reply to this email and we'll be happy to help.\n\n"
+        "{summary}\n\n"
+        "Coco Cafe",
+    ),
 }
 
 
-def notify_submitter(event, kind):
-    """Email the submitter about their event. kind: 'requested', 'approved' or 'rejected'."""
+def build_email(event, kind):
+    """(to, subject, body) for an email to the submitter. Built up front so it survives a delete."""
     subject, body = EMAIL_TEMPLATES[kind]
     fields = {'title': event.title, 'name': event.submitter_name, 'summary': _event_summary(event)}
-    send_email(event.submitter_email, subject.format(**fields), body.format(**fields))
+    return event.submitter_email, subject.format(**fields), body.format(**fields)
+
+
+def notify_submitter(event, kind):
+    """Email the submitter: 'requested', 'approved', 'rejected', 'updated' or 'cancelled'."""
+    send_email(*build_email(event, kind))
 
 
 # ---------------------------------------------------------------------------
@@ -387,8 +418,9 @@ class EventSubmissionForm(FlaskForm):
     title = StringField('Event Title', validators=[DataRequired(), Length(max=150)])
     event_type = SelectField(
         'Type of Event',
-        choices=[(t, t) for t in EVENT_TYPE_CHOICES],
-        validators=[DataRequired()],
+        choices=[('', '')] + [(t, t) for t in EVENT_TYPE_CHOICES],
+        default='',
+        validators=[DataRequired(message='Please choose a type of event.')],
     )
     # Shown only when "Other" is chosen; its text is saved as the event type.
     event_type_other = StringField('Tell us the type of event', validators=[Length(max=50)])
@@ -417,20 +449,16 @@ class EventSubmissionForm(FlaskForm):
     submitter_name = StringField('Your Name', validators=[DataRequired(), Length(max=120)])
     submitter_email = StringField('Your Email', validators=[DataRequired(), Length(max=120)])
     # Optional. To make it required, replace Optional() with DataRequired().
-    submitter_phone = StringField('Your Phone Number', validators=[
-        Optional(),
-        Length(max=30),
-        Regexp(r'^[0-9+().\-\s]{7,30}$',
-               message='Please enter a valid phone number (digits, spaces, dashes, parentheses).'),
-    ])
+    submitter_phone = StringField('Your Phone Number', validators=[Optional(), Length(max=30)])
+
+    def validate_submitter_phone(self, field):
+        if field.data and not format_us_phone(field.data):
+            raise ValidationError('Please enter a 10-digit phone number, like (555) 123-4567.')
     submit = SubmitField('Submit Event')
 
     def validate_event_date(self, field):
         if field.data and field.data < date.today():
             raise ValidationError('Please choose a date in the future.')
-        if field.data and field.data < date.today() + timedelta(days=21):
-            raise ValidationError('Event must be scheduled 3 weeks in advance.')
-            
 
     def validate_event_time(self, field):
         start = parse_hhmm(field.data)
@@ -453,6 +481,43 @@ class EventSubmissionForm(FlaskForm):
         guests = self.guest_count.data
         if guests and LAYOUTS[key]['group'] != layout_group_for(guests):
             raise ValidationError('That layout is not available for your guest count. Please choose another.')
+
+
+class AdminEventForm(FlaskForm):
+    """Admin edit form for an existing event. Admins may book outside public hours and the
+    3-week window; the only hard rule kept is one approved event per day."""
+    title = StringField('Event Title', validators=[DataRequired(), Length(max=150)])
+    event_type = StringField('Type of Event', validators=[DataRequired(), Length(max=50)])
+    description = TextAreaField('Description', validators=[Length(max=2000)])
+    guest_count = IntegerField('Number of Guests', validators=[
+        DataRequired(), NumberRange(min=1, max=MAX_GUEST_CAPACITY,
+                                    message=f'Guest count must be between 1 and {MAX_GUEST_CAPACITY}.')])
+    duration_hours = SelectField('Duration', choices=DURATION_CHOICES, validators=[DataRequired()])
+    event_date = DateField('Event Date', validators=[DataRequired()])
+    event_time = StringField('Start Time', validators=[DataRequired()])
+    layout_choice = SelectField('Table Layout', choices=[
+        (k, f"{v['label']} ({v['seats']} seats, {'up to 35' if v['group'] == '35' else '36-50'} guests)")
+        for k, v in LAYOUTS.items()])
+    location = StringField('Location / Room', validators=[Length(max=200)])
+    submitter_name = StringField('Name', validators=[DataRequired(), Length(max=120)])
+    submitter_email = StringField('Email', validators=[DataRequired(), Length(max=120)])
+    submitter_phone = StringField('Phone', validators=[Optional(), Length(max=30)])
+    notify = BooleanField('Email the guest about these changes', default=True)
+    submit = SubmitField('Save Changes')
+
+    def validate_event_time(self, field):
+        if not parse_hhmm(field.data):
+            raise ValidationError('Enter a start time like 14:30.')
+
+    def validate_layout_choice(self, field):
+        guests = self.guest_count.data
+        if guests and field.data in LAYOUTS and LAYOUTS[field.data]['group'] != layout_group_for(guests):
+            raise ValidationError(f'That layout is for {"up to 35" if LAYOUTS[field.data]["group"] == "35" else "36-50"} '
+                                  f'guests; pick one that fits {guests}.')
+
+    def validate_submitter_phone(self, field):
+        if field.data and not format_us_phone(field.data):
+            raise ValidationError('Enter a 10-digit phone number, like (555) 123-4567.')
 
 
 class LoginForm(FlaskForm):
@@ -486,7 +551,7 @@ def submit_event():
             description=form.description.data,
             submitter_name=form.submitter_name.data,
             submitter_email=form.submitter_email.data,
-            submitter_phone=(form.submitter_phone.data or '').strip() or None,
+            submitter_phone=format_us_phone(form.submitter_phone.data),
             event_date=form.event_date.data,
             event_time=parse_hhmm(form.event_time.data),
             duration_hours=duration,
@@ -611,6 +676,7 @@ def api_events():
                 'layout_image': url_for('static', filename=layout['image']) if layout else '',
                 'grand_total': float(e.grand_total) if e.grand_total is not None else None,
                 'deposit_amount': float(e.deposit_amount) if e.deposit_amount is not None else None,
+                'edit_url': url_for('edit_event', event_id=e.id),
             },
         })
     return jsonify(output)
@@ -657,6 +723,93 @@ def reject_event(event_id):
     notify_submitter(event, 'rejected')
     flash(f'Rejected "{event.title}".', 'success')
     return redirect(url_for('admin_pending'))
+
+
+# --- Managing approved events -------------------------------------------------
+
+# Fields whose change is worth telling the guest about.
+_GUEST_FACING = ('title', 'event_type', 'event_date', 'event_time', 'duration_hours',
+                 'guest_count', 'layout_choice', 'location')
+
+
+def _email_note(address, what):
+    """Ending for a flash message, honest about whether an email actually went out."""
+    if email_configured():
+        return f' and emailed {address} {what}.'
+    return '. (No email sent: Gmail isn\'t configured on this server.)'
+
+
+@app.route('/admin/events')
+@login_required
+def admin_events():
+    """All approved events: upcoming first (soonest at top), then past (most recent at top)."""
+    today = date.today()
+    approved = Event.query.filter_by(status='approved')
+    upcoming = approved.filter(Event.event_date >= today).order_by(Event.event_date, Event.event_time).all()
+    past = approved.filter(Event.event_date < today).order_by(Event.event_date.desc()).all()
+    return render_template('admin_events.html', upcoming=upcoming, past=past, layouts=LAYOUTS)
+
+
+@app.route('/admin/events/<int:event_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_event(event_id):
+    event = Event.query.get_or_404(event_id)
+    form = AdminEventForm(obj=event)
+    if request.method == 'GET':
+        form.event_time.data = event.event_time.strftime('%H:%M') if event.event_time else ''
+        form.duration_hours.data = f'{event.duration_hours:g}' if event.duration_hours else '1'
+        form.notify.data = True
+
+    if form.validate_on_submit():
+        before = {f: getattr(event, f) for f in _GUEST_FACING}
+        with db.session.no_autoflush:
+            event.title = form.title.data.strip()
+            event.event_type = form.event_type.data.strip()
+            event.description = form.description.data
+            event.guest_count = form.guest_count.data
+            event.duration_hours = float(form.duration_hours.data)
+            event.event_date = form.event_date.data
+            event.event_time = parse_hhmm(form.event_time.data)
+            event.layout_choice = form.layout_choice.data
+            event.location = (form.location.data or '').strip() or None
+            event.submitter_name = form.submitter_name.data.strip()
+            event.submitter_email = form.submitter_email.data.strip()
+            event.submitter_phone = format_us_phone(form.submitter_phone.data)
+            for key, value in calculate_price(event.guest_count, event.duration_hours).items():
+                setattr(event, key, value)
+            clash = event_conflicts(event) if event.status == 'approved' else []
+        if clash:
+            db.session.rollback()
+            form.event_date.errors.append(
+                f'"{clash[0].title}" is already approved for that day. Pick another date.')
+        else:
+            changed = any(getattr(event, f) != before[f] for f in _GUEST_FACING)
+            db.session.commit()
+            if form.notify.data and changed:
+                notify_submitter(event, 'updated')
+                flash(f'Saved changes to "{event.title}"' + _email_note(event.submitter_email, 'about the change'), 'success')
+            else:
+                flash(f'Saved changes to "{event.title}".', 'success')
+            return redirect(url_for('admin_events'))
+
+    return render_template('admin_event_edit.html', form=form, event=event, today=date.today(),
+                           layouts=LAYOUTS, event_types=EVENT_TYPE_CHOICES)
+
+
+@app.route('/admin/events/<int:event_id>/delete', methods=['POST'])
+@login_required
+def delete_event(event_id):
+    event = Event.query.get_or_404(event_id)
+    title = event.title
+    email = build_email(event, 'cancelled') if request.form.get('notify') == 'on' else None
+    db.session.delete(event)
+    db.session.commit()
+    if email:
+        send_email(*email)
+        flash(f'Deleted "{title}"' + _email_note(email[0], 'that it was cancelled'), 'success')
+    else:
+        flash(f'Deleted "{title}".', 'success')
+    return redirect(url_for('admin_events'))
 
 
 # --- Availability management ------------------------------------------------

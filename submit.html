@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+{% block title %}Request an Event{% endblock %}
+{% block head %}
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+  <style>
+    .wizard { max-width: 760px; margin: 0 auto; position: relative; z-index: 1; }
+
+    /* Decorative concentric rings on the page sides, echoing the brand's logo-page arcs.
+       Change --ring-color to adjust the shade (#669191 would match the brand guide's blue-teal). */
+    .side-rings { --ring-color: #6f93c2; position: fixed; z-index: 0; width: 340px; height: 340px;
+                  pointer-events: none; opacity: 0; animation: rings-in 1.6s ease .2s forwards; }
+    .side-rings circle { fill: none; stroke: var(--ring-color); stroke-width: 13; }
+    .side-rings { transform: translate3d(0, var(--ring-shift, 0px), 0); will-change: transform; }
+    .side-rings.left  { left: -250px; top: 16vh; }
+    .side-rings.right { right: -250px; bottom: 4vh; }
+    @keyframes rings-in { to { opacity: .55; } }
+    @media (max-width: 991px) { .side-rings { display: none; } }   /* no room beside the form */
+    @media (prefers-reduced-motion: reduce) { .side-rings { animation: none; opacity: .55; } }
+    .wizard-card { border: 0; border-radius: 1.25rem; box-shadow: 0 .75rem 2.5rem rgba(0,0,0,.08); overflow: hidden; }
+    .wizard-body { padding: 2rem 2.25rem 1.5rem; min-height: 420px; }
+    @media (max-width: 576px) { .wizard-body { padding: 1.5rem 1.1rem 1rem; } }
+
+    .wizard-step h2 { font-size: 1.6rem; font-weight: 600; margin-bottom: .35rem; }
+    .wizard-step .lead { font-size: 1rem; color: var(--bs-secondary-color); margin-bottom: 1.5rem; }
+    .wizard .form-label { font-weight: 500; }
+    .wizard .form-control, .wizard .form-select { padding: .7rem .9rem; border-radius: .7rem; }
+    .wizard .form-control:focus, .wizard .form-select:focus { box-shadow: 0 0 0 .2rem rgba(var(--bs-primary-rgb), .15); }
+
+    /* Slide animation: only the active step is shown; it slides in from the direction of travel. */
+    .wizard-step { display: none; }
+    .wizard-step.active { display: block; animation: wz-in-right .45s cubic-bezier(.22,.61,.36,1); }
+    .wizard-step.active.from-left { animation-name: wz-in-left; }
+    @keyframes wz-in-right { from { opacity: 0; transform: translateX(48px); } to { opacity: 1; transform: none; } }
+    @keyframes wz-in-left  { from { opacity: 0; transform: translateX(-48px); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) { .wizard-step.active { animation: none; } }
+
+    .wz-collapse { overflow: hidden; max-height: 0; opacity: 0; transition: max-height .35s ease, opacity .3s ease, margin .35s ease; }
+    .wz-collapse.open { max-height: 140px; opacity: 1; }
+
+    /* Footer: Back / dots / Next */
+    .wizard-footer { display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+                     padding: 1rem 2.25rem 1.5rem; }
+    .wizard-footer .btn { min-width: 108px; border-radius: 999px; padding: .6rem 1.2rem; }
+    @media (max-width: 576px) {
+      .wizard-footer { padding: 1rem 1.1rem 1.25rem; gap: .5rem; }
+      .wizard-footer .btn { min-width: 0; padding: .55rem 1rem; }
+      .wizard-dots { gap: .4rem; }
+    }
+    .wizard-dots { display: flex; gap: .6rem; align-items: center; }
+    .wizard-dot { width: 10px; height: 10px; padding: 0; border: 0; border-radius: 999px;
+                  background: var(--bs-border-color); transition: width .35s ease, background-color .35s ease; }
+    .wizard-dot.done { background: rgba(var(--bs-primary-rgb), .45); cursor: pointer; }
+    .wizard-dot.active { width: 28px; background: var(--bs-primary); }
+    .wizard-dot:focus-visible { outline: 2px solid var(--bs-primary); outline-offset: 3px; }
+
+    /* Menu brochure */
+    .brochure { border-radius: 1rem; overflow: hidden; background: var(--bs-tertiary-bg); }
+    .brochure img { object-fit: contain; max-height: 460px; background: var(--bs-tertiary-bg); }
+    .brochure .carousel-indicators [data-bs-target] { background-color: var(--bs-primary); }
+    .brochure .carousel-control-prev-icon, .brochure .carousel-control-next-icon { filter: invert(1) grayscale(1); }
+
+    /* Table layouts: big preview of the selection, thumbnails to switch */
+    .layout-preview { position: relative; border-radius: 1rem; overflow: hidden; background: #fff;
+                      border: 1px solid var(--bs-border-color); aspect-ratio: 3 / 2; max-height: 52vh; margin: 0 auto; }
+    .layout-preview img { position: absolute; inset: 0; width: 100%; height: 100%; padding: .5rem;
+                          object-fit: contain; transition: opacity .25s ease, transform .35s ease; }
+    .layout-preview img.swapping { opacity: 0; transform: scale(.985); }
+    .layout-preview-caption { margin: .7rem 0 1.1rem; font-size: 1.05rem; text-align: center; }
+
+    .layout-thumbs { display: flex; gap: .75rem; overflow-x: auto; padding: .25rem .1rem .6rem;
+                     scroll-snap-type: x proximity; justify-content: safe center; }
+    .layout-card { flex: 0 0 112px; scroll-snap-align: center; cursor: pointer; text-align: center;
+                   border: 2px solid var(--bs-border-color); border-radius: .85rem; overflow: hidden; background: #fff;
+                   transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+    .layout-card:hover { transform: translateY(-2px); }
+    .layout-card img { width: 100%; height: 72px; object-fit: cover; display: block; opacity: .7; transition: opacity .2s; }
+    .layout-card:hover img { opacity: 1; }
+    .layout-thumb-label { display: block; padding: .35rem .25rem .45rem; font-size: .85rem; font-weight: 500; line-height: 1.2; }
+    .layout-thumb-label small { display: block; font-weight: 400; color: var(--bs-secondary-color); }
+    .layout-card:has(input:checked) { border-color: var(--bs-primary); box-shadow: 0 0 0 .2rem rgba(var(--bs-primary-rgb), .15); }
+    .layout-card:has(input:checked) img { opacity: 1; }
+    .layout-card:has(input:focus-visible) { outline: 2px solid var(--bs-primary); outline-offset: 2px; }
+
+    /* Email confirmation page */
+    .confirm-email { text-align: center; padding: 1.5rem 0 .5rem; }
+    .confirm-icon { width: 64px; height: 64px; margin: 0 auto 1.1rem; border-radius: 999px; display: grid; place-items: center;
+                    color: var(--bs-primary); background: rgba(var(--bs-primary-rgb), .1); }
+    .email-echo { display: inline-block; max-width: 100%; font-size: clamp(1.15rem, 3.6vw, 1.5rem); font-weight: 600;
+                  word-break: break-all; padding: .85rem 1.4rem; border-radius: .9rem;
+                  background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color); }
+    .confirm-help { margin: 1.25rem auto 0; max-width: 40ch; color: var(--bs-secondary-color); }
+
+    /* On submit, the page fades to the brand charcoal before the thank-you page loads. */
+    .wz-fade { position: fixed; inset: 0; z-index: 2000; background: #292f35; opacity: 0;
+               pointer-events: none; transition: opacity .9s ease; }
+    .wz-fade.show { opacity: 1; pointer-events: auto; }
+  </style>
+{% endblock %}
+{% block content %}
+<svg class="side-rings left" viewBox="-170 -170 340 340" aria-hidden="true"><circle r="150"/><circle r="108"/></svg>
+<svg class="side-rings right" viewBox="-170 -170 340 340" aria-hidden="true"><circle r="150"/><circle r="108"/></svg>
+<div class="wizard py-3">
+  <form method="POST" id="event-form" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="card wizard-card">
+      <div class="wizard-body">
+
+        <!-- Step 1: The event -->
+        <section class="wizard-step" data-step="1" aria-labelledby="step1-title">
+          <h2 id="step1-title">Tell us about your event</h2>
+          <p class="lead">Start with the basics. You can add more detail later.</p>
+
+          <div class="mb-3">
+            {{ form.title.label(class="form-label") }}
+            {{ form.title(class="form-control", placeholder="e.g. Sarah's Bridal Shower") }}
+            {% for error in form.title.errors %}<div class="invalid-feedback d-block error">{{ error }}</div>{% endfor %}
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-sm-7">
+              {{ form.event_type.label(class="form-label") }}
+              {{ form.event_type(class="form-select", id="event_type") }}
+              {% for error in form.event_type.errors %}<div class="invalid-feedback d-block error">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-sm-5">
+              {{ form.guest_count.label(class="form-label") }}
+              {{ form.guest_count(class="form-control", id="guest_count", min=1, max=max_capacity, placeholder="e.g. 20") }}
+              <div class="form-text">Up to {{ max_capacity }} guests</div>
+              {% for error in form.guest_count.errors %}<div class="invalid-feedback d-block error">{{ error }}</div>{% endfor %}
+            </div>
+          </div>
+
+          <div class="wz-collapse {% if form.event_type.data == 'Other' %}open{% endif %}" id="other-type-wrap">
+            <div class="mb-3">
+              {{ form.event_type_other.label(class="form-label") }}
+              {{ form.event_type_other(class="form-control", id="event_type_other", placeholder="e.g. Graduation party", maxlength=50) }}
+              {% for error in form.event_type_other.errors %}<div class="invalid-feedback d-block error">{{ error }}</div>{% endfor %}
+            </div>
+          </div>
+
+          <div class="mb-2">
+            {{ form.description.label(class="form-label") }}
+            {{ form.description(class="form-control", rows=3, placeholder="Optional: theme, special requests, anything we should know") }}
+          </div>
+        </section>
+
+        <!-- Step 2: When -->
+        <section class="wizard-step" data-step="2" aria-labelledby="step2-title">
+          <h2 id="step2-title">Pick a date and time</h2>
+          <p class="lead">Duration includes prep time for decorating. Events must be booked at least 3 weeks in advance.</p>
+
+          <div class="mb-3">
+            {{ form.duration_hours.label(class="form-label") }}
+            {{ form.duration_hours(class="form-select", id="duration_hours") }}
+            {% for error in form.duration_hours.errors %}<div class="invalid-feedback d-block error">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="row g-3 mb-2">
+            <div class="col-sm-6">
+              <label for="event_date" class="form-label" title="testing">{{ form.event_date.label.text }}</label> 
+              <button
+                type="button"
+                class="btn btn-link p-0 ms-1 text-decoration-none"
+                title="Events must be booked at least 3 weeks in advance."
+                aria-label="Event date information"
+              >
+                ⓘ
+              </button>
+              {{ form.event_date(class="form-control", id="event_date", type="text", autocomplete="off", placeholder="Select a date") }}
+              {% for error in form.event_date.errors %}<div class="invalid-feedback d-block error">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-sm-6">
+              {{ form.event_time.label(class="form-label") }}
+              {{ form.event_time(class="form-select", id="event_time", **{"data-selected": form.event_time.data or ""}) }}
+              {% for error in form.event_time.errors %}<div class="invalid-feedback d-block error">{{ error }}</div>{% endfor %}
+            </div>
+          </div>
+          <p id="availability-note" class="form-text"></p>
+        </section>
+
+        <!-- Step 3: Menu brochure (temporary content) -->
+        <section class="wizard-step" data-step="3" aria-labelledby="step3-title">
+          <h2 id="step3-title">Our menu</h2>
+          <p class="lead">Browse what we offer. No need to choose anything yet.</p>
+
+          <div id="menuBrochure" class="carousel slide brochure mb-3" data-bs-touch="true">
+            <div class="carousel-indicators">
+              <button type="button" data-bs-target="#menuBrochure" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Savory"></button>
+              <button type="button" data-bs-target="#menuBrochure" data-bs-slide-to="1" aria-label="Sweet"></button>
+              <button type="button" data-bs-target="#menuBrochure" data-bs-slide-to="2" aria-label="Enhancements"></button>
+            </div>
+            <div class="carousel-inner">
+              <div class="carousel-item active">
+                <img src="{{ url_for('static', filename='img/menu/Savory.jpg') }}" class="d-block w-100" alt="Savory menu">
+              </div>
+              <div class="carousel-item">
+                <img src="{{ url_for('static', filename='img/menu/Sweet.jpg') }}" class="d-block w-100" alt="Sweet menu">
+              </div>
+              <div class="carousel-item">
+                <img src="{{ url_for('static', filename='img/menu/Enhancements.jpg') }}" class="d-block w-100" alt="Enhancements menu">
+              </div>
+            </div>
+            <button class="carousel-control-prev" type="button" data-bs-target="#menuBrochure" data-bs-slide="prev">
+              <span class="carousel-control-prev-icon" aria-hidden="true"></span><span class="visually-hidden">Previous</span>
+            </button>
+            <button class="carousel-control-next" type="button" data-bs-target="#menuBrochure" data-bs-slide="next">
+              <span class="carousel-control-next-icon" aria-hidden="true"></span><span class="visually-hidden">Next</span>
+            </button>
+          </div>
+          <div class="alert alert-light border mb-0">Our team will follow up to finalize menu selections with you.</div>
+        </section>
+
+        <!-- Step 4: Table layout -->
+        <section class="wizard-step" data-step="4" aria-labelledby="step4-title">
+          <h2 id="step4-title">Choose a table layout</h2>
+          <p class="lead" id="layout-hint">Enter your number of guests on step 1 to see the layouts that fit.</p>
+
+          <!-- Large preview of the selected layout -->
+          <div class="layout-stage" id="layout-stage" hidden>
+            <div class="layout-preview">
+              <img id="layout-preview-img" src="" alt="">
+            </div>
+            <div class="layout-preview-caption" aria-live="polite">
+              <strong id="layout-preview-label"></strong>
+              <span class="text-body-secondary">&middot; seats up to <span id="layout-preview-seats"></span></span>
+            </div>
+          </div>
+
+          <!-- Thumbnails to choose between (arrow keys also work) -->
+          {% for group, items in layouts_by_group.items() %}
+            <div class="layout-group" data-group="{{ group }}" hidden>
+              <div class="layout-thumbs" role="radiogroup" aria-label="Table layouts">
+                {% for key, info in items %}
+                  <label class="layout-card" data-label="{{ info.label }}" data-seats="{{ info.seats }}"
+                         data-image="{{ url_for('static', filename=info.image) }}">
+                    <input class="visually-hidden" type="radio" name="layout_choice" value="{{ key }}" {% if form.layout_choice.data == key %}checked{% endif %}>
+                    <img src="{{ url_for('static', filename=info.image) }}" alt="" loading="lazy">
+                    <span class="layout-thumb-label">{{ info.label }}<small>{{ info.seats }} seats</small></span>
+                  </label>
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+          {% for error in form.layout_choice.errors %}<div class="invalid-feedback d-block error">{{ error }}</div>{% endfor %}
+        </section>
+
+        <!-- Step 5: Contact -->
+        <section class="wizard-step" data-step="5" aria-labelledby="step5-title">
+          <h2 id="step5-title">How can we reach you?</h2>
+          <p class="lead">We'll use this to confirm your request and follow up.</p>
+
+          <div class="mb-3">
+            {{ form.submitter_name.label(class="form-label") }}
+            {{ form.submitter_name(class="form-control", placeholder="Your full name", autocomplete="name") }}
+            {% for error in form.submitter_name.errors %}<div class="invalid-feedback d-block error">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="mb-3">
+            {{ form.submitter_email.label(class="form-label") }}
+            {{ form.submitter_email(class="form-control", id="submitter_email", type="email", placeholder="you@example.com", autocomplete="email") }}
+            {% for error in form.submitter_email.errors %}<div class="invalid-feedback d-block error">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="mb-3">
+            {{ form.submitter_phone.label(class="form-label") }}
+            {{ form.submitter_phone(class="form-control", placeholder="e.g. (555) 123-4567", type="tel", autocomplete="tel") }}
+            {% for error in form.submitter_phone.errors %}<div class="invalid-feedback d-block error">{{ error }}</div>{% endfor %}
+          </div>
+        </section>
+
+        <!-- Step 6: Confirm email -->
+        <section class="wizard-step" data-step="6" aria-labelledby="step6-title">
+          <div class="confirm-email">
+            <div class="confirm-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m3.5 6.5 8.5 6.5 8.5-6.5"/></svg>
+            </div>
+            <h2 id="step6-title">Is this your email?</h2>
+            <p class="lead mb-3">Your confirmation and every update about this request will go here.</p>
+            <div class="email-echo" id="email-echo"></div>
+            <p class="confirm-help">
+              If anything looks off, <button type="button" class="btn btn-link p-0 align-baseline" id="edit-email">go back and fix it</button>.
+              Otherwise, submit your request below.
+            </p>
+          </div>
+        </section>
+
+      </div>
+
+      <div class="wizard-footer border-top">
+        <button type="button" class="btn btn-outline-secondary" id="wz-back">Back</button>
+        <div class="wizard-dots" role="tablist" aria-label="Form progress"></div>
+        <button type="button" class="btn btn-primary" id="wz-next">Next</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}
+{% block scripts %}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+  <script>window.LAYOUT_SMALL_GROUP_MAX = {{ small_group_max }};</script>
+  <script src="{{ url_for('static', filename='js/submit.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/wizard.js') }}"></script>
+  <script>
+    // Parallax: the side rings move at half the scroll speed instead of staying pinned.
+    (function () {
+      const FOLLOW = 0.5;   // 1 = stay pinned to the screen, 0 = scroll away with the page
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const root = document.documentElement;
+      let ticking = false;
+      function update() {
+        root.style.setProperty('--ring-shift', (-window.scrollY * (1 - FOLLOW)).toFixed(1) + 'px');
+        ticking = false;
+      }
+      window.addEventListener('scroll', () => {
+        if (!ticking) { ticking = true; requestAnimationFrame(update); }
+      }, { passive: true });
+      update();
+    })();
+  </script>
+{% endblock %}
