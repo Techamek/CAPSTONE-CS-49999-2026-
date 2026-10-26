@@ -96,8 +96,10 @@ LAYOUTS = {
     '35-B': {'group': '35', 'label': 'Layout B', 'seats': 34, 'image': 'img/layout35-2.png'},
     '35-C': {'group': '35', 'label': 'Layout C', 'seats': 34, 'image': 'img/layout35-3.png'},
     '35-D': {'group': '35', 'label': 'Layout D', 'seats': 36, 'image': 'img/layout35-4.png'},
+    '35-U': {'group': '35', 'label': 'Unsure', 'seats': 35},
     '50-A': {'group': '50', 'label': 'Layout A', 'seats': 50, 'image': 'img/layout50-1.png'},
     '50-B': {'group': '50', 'label': 'Layout B', 'seats': 50, 'image': 'img/layout50-2.png'},
+    '50-U': {'group': '50', 'label': 'Unsure', 'seats': 50},
 }
 LAYOUT_SMALL_GROUP_MAX = 35
 

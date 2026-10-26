@@ -33,8 +33,10 @@
           {% set lay = event.layout_info() %}
           {% if lay %}
             <p class="submitter-line"><strong>Requested layout:</strong> {{ lay.label }} ({{ lay.seats }} seats)</p>
-            <a href="{{ url_for('static', filename=lay.image) }}" target="_blank" rel="noopener">
-              <img class="layout-thumb" src="{{ url_for('static', filename=lay.image) }}" alt="{{ lay.label }}">
+              {%if lay.image %}
+                <a href="{{ url_for('static', filename=lay.image) }}" target="_blank" rel="noopener">
+                <img class="layout-thumb" src="{{ url_for('static', filename=lay.image) }}" alt="{{ lay.label }}">
+              {%endif%}
             </a>
           {% endif %}
 
