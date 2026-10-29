@@ -65,8 +65,6 @@
                       border: 1px solid var(--bs-border-color); aspect-ratio: 3 / 2; max-height: 52vh; margin: 0 auto; }
     .layout-preview img { position: absolute; inset: 0; width: 100%; height: 100%; padding: .5rem;
                           object-fit: contain; transition: opacity .25s ease, transform .35s ease; }
-    .layout-preview-description { position: absolute; inset: 0; display: grid; place-items: center;
-                                  padding: 2rem; text-align: center; color: var(--bs-secondary-color); }
     .layout-preview img.swapping { opacity: 0; transform: scale(.985); }
     .layout-preview-caption { margin: .7rem 0 1.1rem; font-size: 1.05rem; text-align: center; }
 
@@ -78,8 +76,6 @@
     .layout-card:hover { transform: translateY(-2px); }
     .layout-card img { width: 100%; height: 72px; object-fit: cover; display: block; opacity: .7; transition: opacity .2s; }
     .layout-card:hover img { opacity: 1; }
-    .layout-thumb-description { height: 72px; display: grid; place-items: center; padding: .4rem;
-                                font-size: .75rem; line-height: 1.25; color: var(--bs-secondary-color); }
     .layout-thumb-label { display: block; padding: .35rem .25rem .45rem; font-size: .85rem; font-weight: 500; line-height: 1.2; }
     .layout-thumb-label small { display: block; font-weight: 400; color: var(--bs-secondary-color); }
     .layout-card:has(input:checked) { border-color: var(--bs-primary); box-shadow: 0 0 0 .2rem rgba(var(--bs-primary-rgb), .15); }
@@ -223,7 +219,6 @@
           <div class="layout-stage" id="layout-stage" hidden>
             <div class="layout-preview">
               <img id="layout-preview-img" src="" alt="">
-              <div class="layout-preview-description" id="layout-preview-description" hidden></div>
             </div>
             <div class="layout-preview-caption" aria-live="polite">
               <strong id="layout-preview-label"></strong>
@@ -237,14 +232,9 @@
               <div class="layout-thumbs" role="radiogroup" aria-label="Table layouts">
                 {% for key, info in items %}
                   <label class="layout-card" data-label="{{ info.label }}" data-seats="{{ info.seats }}"
-                         data-image="{{ url_for('static', filename=info.image) if info.image else '' }}"
-                         {% if info.label == "Unsure" %}data-description="Can't choose a table layout? Our team can help you choose a layout at a later date."{% endif %}>
+                         data-image="{{ url_for('static', filename=info.image) }}">
                     <input class="visually-hidden" type="radio" name="layout_choice" value="{{ key }}" {% if form.layout_choice.data == key %}checked{% endif %}>
-                    {% if info.image %}
-                      <img src="{{ url_for('static', filename=info.image) }}" alt="" loading="lazy">
-                    {% else %}
-                      <span class="layout-thumb-description">Not sure? That's okay.</span>
-                    {% endif %}
+                    <img src="{{ url_for('static', filename=info.image) }}" alt="" loading="lazy">
                     <span class="layout-thumb-label">{{ info.label }}<small>{{ info.seats }} seats</small></span>
                   </label>
                 {% endfor %}

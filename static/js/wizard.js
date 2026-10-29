@@ -194,18 +194,14 @@
   // ---- table layout preview ----------------------------------------------------
   const stage = $('layout-stage');
   const previewImg = $('layout-preview-img');
-  const previewDescription = $('layout-preview-description');
   let shownImage = null;
 
   function showLayout(card, animate) {
     if (!card) return;
     $('layout-preview-label').textContent = card.dataset.label;
     $('layout-preview-seats').textContent = card.dataset.seats;
-    previewDescription.textContent = card.dataset.description || '';
-    previewDescription.hidden = !card.dataset.description;
-    previewImg.hidden = !!card.dataset.description;
     previewImg.alt = `${card.dataset.label} table arrangement`;
-    if (!card.dataset.image || card.dataset.image === shownImage) return;
+    if (card.dataset.image === shownImage) return;
     shownImage = card.dataset.image;
     if (!animate) { previewImg.src = shownImage; return; }
     previewImg.classList.add('swapping');           // fade out, swap, fade back in
