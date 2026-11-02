@@ -44,7 +44,7 @@
         </td>
         <td>
           <div class="fw-semibold">{{ e.title }}</div>
-          <div class="ev-sub">{{ e.event_type or '' }}{% if layout %} &middot; {{ layout.label }}{% endif %}</div>
+          <div class="ev-sub">{{ e.event_type or '' }}{% if layout %} &middot; {{ layout.label }}{% elif e.layout_choice %} &middot; Layout: {{ layout_description(e.layout_choice) }}{% endif %}</div>
         </td>
         <td>{{ e.guest_count or '' }}<span class="d-md-none"> guests</span></td>
         <td>
