@@ -198,12 +198,7 @@
 
   function showLayout(card, animate) {
     if (!card) return;
-    const undecided = card.dataset.undecided === '1';
     $('layout-preview-label').textContent = card.dataset.label;
-    $('layout-preview-seats-wrap').hidden = undecided;
-    $('layout-undecided-note').hidden = !undecided;
-    previewImg.hidden = undecided;
-    if (undecided) return;
     $('layout-preview-seats').textContent = card.dataset.seats;
     previewImg.alt = `${card.dataset.label} table arrangement`;
     if (card.dataset.image === shownImage) return;

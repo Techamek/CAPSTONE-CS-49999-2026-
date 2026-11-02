@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import logging
-from emailer import send_email, email_configured, set_token_store
+from emailer import send_email, email_configured
 
 logging.basicConfig(level=logging.INFO)
 
@@ -100,23 +100,10 @@ LAYOUTS = {
     '50-B': {'group': '50', 'label': 'Layout B', 'seats': 50, 'image': 'img/layout50-2.png'},
 }
 LAYOUT_SMALL_GROUP_MAX = 35
-LAYOUT_UNDECIDED = 'undecided'   # guest chose "Not sure yet"; staff help pick a layout later
-LAYOUT_UNDECIDED_LABEL = 'Not sure yet'
 
 
 def layout_group_for(guest_count):
     return '35' if guest_count <= LAYOUT_SMALL_GROUP_MAX else '50'
-
-
-def layout_description(key):
-    """Short text for emails and admin views: 'Layout A (36 seats)', 'Not sure yet', or ''."""
-    if key == LAYOUT_UNDECIDED:
-        return LAYOUT_UNDECIDED_LABEL
-    info = LAYOUTS.get(key)
-    return f"{info['label']} ({info['seats']} seats)" if info else ''
-
-
-app.jinja_env.globals['layout_description'] = layout_description
 
 
 # ---------------------------------------------------------------------------
@@ -235,33 +222,6 @@ class DateOverride(db.Model):
     open_time = db.Column(db.Time, nullable=True)
     close_time = db.Column(db.Time, nullable=True)
     note = db.Column(db.String(200), nullable=True)
-
-
-class AppSetting(db.Model):
-    """Small key/value store. Holds the rotating Outlook refresh token between restarts."""
-    __tablename__ = 'app_settings'
-    key = db.Column(db.String(64), primary_key=True)
-    value = db.Column(db.Text, nullable=True)
-
-
-_OUTLOOK_TOKEN_KEY = 'outlook_refresh_token'
-
-
-def _load_outlook_token():
-    with app.app_context():   # called from the email background thread
-        row = db.session.get(AppSetting, _OUTLOOK_TOKEN_KEY)
-        return row.value if row else None
-
-
-def _save_outlook_token(value):
-    with app.app_context():
-        row = db.session.get(AppSetting, _OUTLOOK_TOKEN_KEY) or AppSetting(key=_OUTLOOK_TOKEN_KEY)
-        row.value = value
-        db.session.add(row)
-        db.session.commit()
-
-
-set_token_store(_load_outlook_token, _save_outlook_token)
 
 
 @login_manager.user_loader
@@ -388,9 +348,9 @@ def _event_summary(event):
         f"Duration: {event.duration_hours:g} hours" if event.duration_hours else None,
         f"Guests: {event.guest_count}" if event.guest_count else None,
     ]
-    layout = layout_description(event.layout_choice)
+    layout = event.layout_info()
     if layout:
-        lines.append(f"Table layout: {layout}")
+        lines.append(f"Table layout: {layout['label']} ({layout['seats']} seats)")
     return "\n".join(l for l in lines if l)
 
 
@@ -516,8 +476,6 @@ class EventSubmissionForm(FlaskForm):
 
     def validate_layout_choice(self, field):
         key = field.data
-        if key == LAYOUT_UNDECIDED:
-            return
         if key not in LAYOUTS:
             raise ValidationError('Please choose a table layout.')
         guests = self.guest_count.data
@@ -539,7 +497,7 @@ class AdminEventForm(FlaskForm):
     event_time = StringField('Start Time', validators=[DataRequired()])
     layout_choice = SelectField('Table Layout', choices=[
         (k, f"{v['label']} ({v['seats']} seats, {'up to 35' if v['group'] == '35' else '36-50'} guests)")
-        for k, v in LAYOUTS.items()] + [(LAYOUT_UNDECIDED, LAYOUT_UNDECIDED_LABEL)])
+        for k, v in LAYOUTS.items()])
     location = StringField('Location / Room', validators=[Length(max=200)])
     submitter_name = StringField('Name', validators=[DataRequired(), Length(max=120)])
     submitter_email = StringField('Email', validators=[DataRequired(), Length(max=120)])
@@ -616,7 +574,6 @@ def submit_event():
     return render_template(
         'submit.html', form=form, max_capacity=MAX_GUEST_CAPACITY,
         layouts_by_group=layouts_by_group, small_group_max=LAYOUT_SMALL_GROUP_MAX,
-        layout_undecided=LAYOUT_UNDECIDED,
     )
 
 
@@ -715,7 +672,7 @@ def api_events():
                 'event_type': e.event_type or '',
                 'guest_count': e.guest_count or 0,
                 'duration_hours': e.duration_hours or 0,
-                'layout_label': layout_description(e.layout_choice),
+                'layout_label': f"{layout['label']} ({layout['seats']} seats)" if layout else '',
                 'layout_image': url_for('static', filename=layout['image']) if layout else '',
                 'grand_total': float(e.grand_total) if e.grand_total is not None else None,
                 'deposit_amount': float(e.deposit_amount) if e.deposit_amount is not None else None,
@@ -779,7 +736,7 @@ def _email_note(address, what):
     """Ending for a flash message, honest about whether an email actually went out."""
     if email_configured():
         return f' and emailed {address} {what}.'
-    return '. (No email sent: Outlook isn\'t configured on this server.)'
+    return '. (No email sent: Gmail isn\'t configured on this server.)'
 
 
 @app.route('/admin/events')
