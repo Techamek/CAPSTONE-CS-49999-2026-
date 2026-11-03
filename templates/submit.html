@@ -279,6 +279,10 @@
               If anything looks off, <button type="button" class="btn btn-link p-0 align-baseline" id="edit-email">go back and fix it</button>.
               Otherwise, submit your request below.
             </p>
+            <div class="mb-3" id="turnstile-widget-wrap" aria-live="polite">
+              <div id="turnstile-widget" data-sitekey="{{ turnstile_site_key }}" data-action="{{ turnstile_action }}"></div>
+              <noscript>Please enable JavaScript to complete the security check.</noscript>
+            </div>
           </div>
         </section>
 
@@ -296,6 +300,26 @@
 {% block scripts %}
   <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+  <script>
+    (function () {
+      var active = false;
+      var rendered = false;
+      window.renderTurnstileWidget = function () {
+        active = true;
+        var container = document.getElementById('turnstile-widget');
+        if (!container || !window.turnstile || rendered) return;
+        window.turnstile.render(container, {
+          sitekey: container.dataset.sitekey,
+          action: container.dataset.action,
+        });
+        rendered = true;
+      };
+      window.onTurnstileLoaded = function () {
+        if (active) window.renderTurnstileWidget();
+      };
+    })();
+  </script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoaded&amp;render=explicit" async defer></script>
   <script>window.LAYOUT_SMALL_GROUP_MAX = {{ small_group_max }};</script>
   <script src="{{ url_for('static', filename='js/submit.js') }}"></script>
   <script src="{{ url_for('static', filename='js/wizard.js') }}"></script>

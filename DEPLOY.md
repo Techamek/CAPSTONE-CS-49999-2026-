@@ -19,6 +19,8 @@ The repo root must contain `app.py`, `requirements.txt`, `Procfile`, `templates/
 | `DATABASE_URL` | `${{MySQL.MYSQL_URL}}` (reference variable; replace `MySQL` with your database service's name) |
 | `TZ` | `America/New_York` (otherwise the server uses UTC and "today" and past time slots are wrong) |
 | `ADMIN_USERNAME`, `ADMIN_EMAIL`, `ADMIN_PASSWORD` | your first admin login |
+| `TURNSTILE_SECRET` | The secret for the existing Cloudflare Turnstile widget; store it only as a Railway variable |
+| `TURNSTILE_HOSTNAMES` | Exact production hostname(s), comma-separated, without scheme/path or local hostnames |
 
 The app converts `mysql://` to `mysql+pymysql://` automatically.
 The app refuses to start on Railway if `SECRET_KEY` is missing.
@@ -34,6 +36,8 @@ If Railway does not pick up the `Procfile`, set the start command in Settings ->
 
 ## 5. Get a public address
 Settings -> Networking -> Generate Domain. Share that https address. Admin login is at `/admin/login`.
+Set `TURNSTILE_HOSTNAMES` to the hostname from this address (without `https://` or a path); do not
+include `localhost` or `127.0.0.1` in the production value.
 
 ## 6. After the first login
 - Delete the `ADMIN_PASSWORD` variable (the account is already created).
