@@ -44,6 +44,9 @@
       d.setAttribute('aria-selected', i === current ? 'true' : 'false');
     });
     if (steps[current].dataset.step === '4' && typeof syncLayout === 'function') syncLayout();
+    if (steps[current].dataset.step === '6' && typeof window.renderTurnstileWidget === 'function') {
+      window.renderTurnstileWidget();
+    }
     backBtn.style.visibility = current === 0 ? 'hidden' : 'visible';
     nextBtn.textContent = current === total - 1 ? 'Submit Request' : 'Next';
 
@@ -128,6 +131,13 @@
       const phone = form.elements['submitter_phone'];
       if (val(phone) && !/^[0-9+().\-\s]{7,30}$/.test(val(phone))) {
         ok = fail(phone, 'Please enter a valid phone number (digits, spaces, dashes, parentheses).');
+      }
+    }
+
+    if (n === 6) {
+      const token = form.elements['cf-turnstile-response'];
+      if (!token || !val(token)) {
+        ok = fail(null, 'Please complete the security check.', $('turnstile-widget-wrap'));
       }
     }
 

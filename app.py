@@ -1,5 +1,10 @@
+import json
 import os
 from datetime import datetime, date, time, timedelta
+from http.client import HTTPException
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 from flask import Flask, render_template, redirect, url_for, flash, request, jsonify, session
 from flask_sqlalchemy import SQLAlchemy
@@ -32,6 +37,17 @@ ON_RAILWAY = 'RAILWAY_ENVIRONMENT' in os.environ or 'RAILWAY_PROJECT_ID' in os.e
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'change-me-in-.env')
 if ON_RAILWAY and app.config['SECRET_KEY'] == 'change-me-in-.env':
     raise RuntimeError('Set a SECRET_KEY environment variable before deploying.')
+
+app.config['TURNSTILE_SITE_KEY'] = os.environ.get(
+    'TURNSTILE_SITE_KEY', '0x4AAAAAAFycE5Bm7UFvW4Nc')
+app.config['TURNSTILE_SECRET'] = os.environ.get('TURNSTILE_SECRET', '').strip()
+app.config['TURNSTILE_HOSTNAMES'] = {
+    hostname.strip().lower().rstrip('.')
+    for hostname in os.environ.get(
+        'TURNSTILE_HOSTNAMES', 'localhost,127.0.0.1').split(',')
+    if hostname.strip()
+}
+TURNSTILE_ACTION = 'event_submission'
 
 # Cookies: HTTP-only always; "secure" (https only) when deployed or COOKIE_SECURE=1.
 _secure_cookies = ON_RAILWAY or os.environ.get('COOKIE_SECURE') == '1'
@@ -410,6 +426,51 @@ def notify_submitter(event, kind):
     send_email(*build_email(event, kind))
 
 
+def verify_turnstile_response(token, remote_ip=None):
+    """Verify a public-form Turnstile token and its action/hostname with Cloudflare."""
+    if not isinstance(token, str) or not token or len(token) > 2048:
+        return False
+
+    payload = {
+        'secret': app.config['TURNSTILE_SECRET'],
+        'response': token,
+    }
+    if remote_ip:
+        payload['remoteip'] = remote_ip
+
+    verification_request = Request(
+        'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+        data=urlencode(payload).encode('ascii'),
+        headers={'Content-Type': 'application/x-www-form-urlencoded'},
+        method='POST',
+    )
+    try:
+        with urlopen(verification_request, timeout=10) as response:
+            result = json.loads(response.read().decode('utf-8'))
+    except HTTPError as exc:
+        app.logger.error('Turnstile Siteverify returned HTTP %s.', exc.code)
+        return False
+    except (HTTPException, URLError, OSError) as exc:
+        app.logger.error('Turnstile Siteverify request failed: %s', exc)
+        return False
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        app.logger.error('Turnstile Siteverify returned an invalid response.')
+        return False
+
+    if not isinstance(result, dict):
+        app.logger.error('Turnstile Siteverify returned an invalid response.')
+        return False
+
+    hostname = result.get('hostname')
+    expected_hostnames = app.config['TURNSTILE_HOSTNAMES']
+    return (
+        result.get('success') is True
+        and result.get('action') == TURNSTILE_ACTION
+        and isinstance(hostname, str)
+        and hostname.lower().rstrip('.') in expected_hostnames
+    )
+
+
 # ---------------------------------------------------------------------------
 # Forms
 # ---------------------------------------------------------------------------
@@ -541,32 +602,46 @@ class AddAdminForm(FlaskForm):
 @app.route('/', methods=['GET', 'POST'])
 def submit_event():
     form = EventSubmissionForm()
+    layouts_by_group = {'35': [], '50': []}
+    for key, info in LAYOUTS.items():
+        layouts_by_group[info['group']].append((key, info))
+    response_status = 200
+
     if form.validate_on_submit():
-        duration = float(form.duration_hours.data)
-        price = calculate_price(form.guest_count.data, duration)
-        event = Event(
-            title=form.title.data,
-            event_type=(form.event_type_other.data.strip()
-                        if form.event_type.data == 'Other' else form.event_type.data),
-            description=form.description.data,
-            submitter_name=form.submitter_name.data,
-            submitter_email=form.submitter_email.data,
-            submitter_phone=format_us_phone(form.submitter_phone.data),
-            event_date=form.event_date.data,
-            event_time=parse_hhmm(form.event_time.data),
-            duration_hours=duration,
-            guest_count=form.guest_count.data,
-            location=form.location.data,
-            layout_choice=form.layout_choice.data,
-            status='pending',
-            **price,
-        )
-        db.session.add(event)
-        db.session.commit()
-        notify_submitter(event, 'requested')
-        # Remember the first name for the thank-you page (shown once, then cleared).
-        session['thanks_name'] = (event.submitter_name or '').strip().split(' ')[0]
-        return redirect(url_for('thank_you'))
+        if not app.config['TURNSTILE_SECRET'] or not app.config['TURNSTILE_HOSTNAMES']:
+            app.logger.error('Turnstile is not configured with a secret and allowed hostnames.')
+            flash('Event requests are temporarily unavailable. Please try again later.', 'error')
+            response_status = 503
+        elif not verify_turnstile_response(
+                request.form.get('cf-turnstile-response'), request.remote_addr):
+            flash('Please complete the security check and try again.', 'error')
+            response_status = 403
+        else:
+            duration = float(form.duration_hours.data)
+            price = calculate_price(form.guest_count.data, duration)
+            event = Event(
+                title=form.title.data,
+                event_type=(form.event_type_other.data.strip()
+                            if form.event_type.data == 'Other' else form.event_type.data),
+                description=form.description.data,
+                submitter_name=form.submitter_name.data,
+                submitter_email=form.submitter_email.data,
+                submitter_phone=format_us_phone(form.submitter_phone.data),
+                event_date=form.event_date.data,
+                event_time=parse_hhmm(form.event_time.data),
+                duration_hours=duration,
+                guest_count=form.guest_count.data,
+                location=form.location.data,
+                layout_choice=form.layout_choice.data,
+                status='pending',
+                **price,
+            )
+            db.session.add(event)
+            db.session.commit()
+            notify_submitter(event, 'requested')
+            # Remember the first name for the thank-you page (shown once, then cleared).
+            session['thanks_name'] = (event.submitter_name or '').strip().split(' ')[0]
+            return redirect(url_for('thank_you'))
 
     layouts_by_group = {'35': [], '50': []}
     for key, info in LAYOUTS.items():
@@ -574,7 +649,9 @@ def submit_event():
     return render_template(
         'submit.html', form=form, max_capacity=MAX_GUEST_CAPACITY,
         layouts_by_group=layouts_by_group, small_group_max=LAYOUT_SMALL_GROUP_MAX,
-    )
+        turnstile_site_key=app.config['TURNSTILE_SITE_KEY'],
+        turnstile_action=TURNSTILE_ACTION,
+    ), response_status
 
 
 @app.route('/thank-you')

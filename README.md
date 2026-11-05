@@ -1,6 +1,6 @@
 # Event Calendar (Flask + MySQL)
 
-- **Public page (`/`)** — anyone can request an event: title, type, guest count, duration, an *available* date and start time, a table layout picked from images, and contact info. There is no pricing anywhere on the public side. The menu is a link to a menu image (`static/img/menu.png`, cropped to food/beverage options only). Submissions start as **pending**.
+- **Public page (`/`)** — anyone can request an event: title, type, guest count, duration, an *available* date and start time, a table layout picked from images, and contact info. A Cloudflare Turnstile challenge is verified server-side before a request is saved. There is no pricing anywhere on the public side. The menu is a link to a menu image (`static/img/menu.png`, cropped to food/beverage options only). Submissions start as **pending**.
 - **Admin area (`/admin/...`)** — requires login. Approve/reject pending requests, view the approved calendar, manage admins, and control **Availability**.
 
 ## Availability (admin → Availability)
@@ -21,6 +21,12 @@ Admins still see a base-package estimate (space rental + per-person menu + tax +
 
 ## Setup
 
+Configure `TURNSTILE_SECRET` with the existing widget's secret and
+`TURNSTILE_HOSTNAMES` with the exact hostnames allowed to submit requests. For local
+development, use `localhost,127.0.0.1`; in production, use only the production hostname(s)
+(no scheme or path, and do not include local hostnames). The app fails closed if the secret
+or hostname allowlist is missing. Do not commit the secret.
+
 ```bash
 python -m venv venv && source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
@@ -35,5 +41,5 @@ Upgrading an existing database: see the note at the bottom of `schema.sql`.
 ## Notes before deploying
 
 - Set a real `SECRET_KEY`; run behind HTTPS and set `SESSION_COOKIE_SECURE = True`.
-- Consider rate-limiting/CAPTCHA on the public form.
+- Set the deployment's `TURNSTILE_SECRET` and production-only `TURNSTILE_HOSTNAMES` variables before accepting event requests.
 - `/api/availability/*` is public and read-only; it exposes only which dates/times are open, not event details.
